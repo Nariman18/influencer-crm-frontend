@@ -73,7 +73,7 @@ export function GoogleConnectDialog({
     const scope = [
       "https://www.googleapis.com/auth/gmail.send",
       "https://www.googleapis.com/auth/gmail.compose",
-      "https://www.googleapis.com/auth/gmail.readonly", // Added for labels.list
+      "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile",
     ].join(" ");
