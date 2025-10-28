@@ -1,12 +1,11 @@
-import AuthCallbackContent from "@/components/auth/AuthContent";
 import { Suspense } from "react";
 
-export default function AuthCallbackPage() {
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <AuthCallbackContent />
-    </Suspense>
-  );
+export default function CallbackLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
 }
 
 function LoadingSpinner() {
