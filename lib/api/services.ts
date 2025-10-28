@@ -32,7 +32,7 @@ export const authApi = {
   updateProfile: (data: { name: string; email: string }) =>
     apiClient.put<User>("/auth/profile", data),
 
-  // Public endpoint - no authentication required
+  // Public endpoint. No authentication required
   exchangeToken: (code: string) =>
     apiClient.post<{
       accessToken: string;
