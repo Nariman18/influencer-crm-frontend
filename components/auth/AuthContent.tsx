@@ -51,14 +51,17 @@ export default function AuthCallbackContent() {
     const processOAuthCallback = async () => {
       // Prevent double processing
       if (isProcessing || hasProcessed) {
-        console.log("Already processing or processed, skipping...");
+        console.log("⏭Already processing or processed, skipping...");
         return;
       }
+
+      console.log("Starting OAuth callback processing...");
 
       // Handle errors first
       if (error) {
         console.error("OAuth error:", error);
         toast.error(`Google authentication failed: ${error}`);
+        sessionStorage.removeItem("googleOAuthInProgress");
         router.push("/settings");
         return;
       }
@@ -67,40 +70,76 @@ export default function AuthCallbackContent() {
       if (code) {
         setIsProcessing(true);
         setHasProcessed(true);
-        console.log(" Processing OAuth code...");
+
+        console.log("Processing OAuth code...");
+        console.log("Code:", code.substring(0, 20) + "...");
 
         try {
-          // Check if user is authenticated
+          // Check if user has a valid token
           const token = localStorage.getItem("token");
+          console.log("Token check:", token ? "Present" : "Missing");
+
           if (!token) {
-            // Store the code in session storage and redirect to login
+            console.log("No token found - storing code for later");
+            // Store the code and redirect to login
             sessionStorage.setItem("pendingGoogleAuth", code);
+            sessionStorage.setItem("pendingRedirect", "/settings");
             toast.info("Please log in to connect your Google account");
-            router.push("/auth/login");
+            router.push("/auth/login?returnTo=/auth/callback");
             return;
           }
 
-          // Exchange code for tokens
-          console.log(" Exchanging code for tokens...");
+          // Verify the token is valid by making a test API call
+          try {
+            console.log("Verifying user authentication...");
+            // This will throw if token is invalid
+            await authApi.getProfile();
+            console.log("User is authenticated");
+          } catch (authError) {
+            console.error("Token invalid:", authError);
+            // Token is invalid, store code and redirect to login
+            sessionStorage.setItem("pendingGoogleAuth", code);
+            sessionStorage.setItem("pendingRedirect", "/settings");
+            localStorage.removeItem("token"); // Clear invalid token
+            toast.info("Your session expired. Please log in again.");
+            router.push("/auth/login?returnTo=/auth/callback");
+            return;
+          }
+
+          //  Exchange code for tokens
+          console.log("Exchanging code for tokens...");
           const tokens = await GoogleAuthService.exchangeCodeForTokens(code);
-          console.log(" Tokens received:", tokens);
+          console.log("Tokens received:", {
+            email: tokens.email,
+            hasAccessToken: !!tokens.accessToken,
+            hasRefreshToken: !!tokens.refreshToken,
+          });
 
           // Send tokens to backend for storage
+          console.log("Connecting Google account to user profile...");
           await connectMutation.mutateAsync({
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
             email: tokens.email,
           });
         } catch (error) {
-          console.error(" OAuth processing failed:", error);
-          toast.error("Failed to process Google authentication");
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          toast.error(
+            `Failed to process Google authentication: ${errorMessage}`
+          );
+
+          // Clear OAuth state on error
+          sessionStorage.removeItem("googleOAuthInProgress");
+          sessionStorage.removeItem("pendingGoogleAuth");
+
           router.push("/settings");
         } finally {
           setIsProcessing(false);
         }
       } else {
-        console.log(" No OAuth code received");
-        toast.error("No authorization code received");
+        toast.error("No authorization code received from Google");
+        sessionStorage.removeItem("googleOAuthInProgress");
         router.push("/settings");
       }
     };
@@ -111,12 +150,18 @@ export default function AuthCallbackContent() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-        <p className="mt-4 text-gray-600">
-          {isProcessing
-            ? "Processing Google authentication..."
-            : "Connecting Google account..."}
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <h2 className="text-xl font-semibold mb-2">
+          Connecting Google Account
+        </h2>
+        <p className="text-gray-600">
+          {isProcessing ? "Processing authentication..." : "Please wait..."}
         </p>
+        {code && (
+          <p className="text-sm text-gray-500 mt-2">
+            Authorization code received
+          </p>
+        )}
       </div>
     </div>
   );
