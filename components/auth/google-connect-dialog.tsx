@@ -70,8 +70,7 @@ export function GoogleConnectDialog({
     }
 
     const redirectUri = `${window.location.origin}/auth/callback`;
-    // Removing any double slashes that might occur
-    const cleanRedirectUri = redirectUri.replace(/\/\/+/g, "/");
+    // No need for replace - it breaks the protocol. If you want to clean extra path slashes, use a more targeted regex like replace(/\/+/g, '/') on the path only
     const scope = [
       "https://www.googleapis.com/auth/gmail.send",
       "https://www.googleapis.com/auth/gmail.compose",
@@ -83,7 +82,7 @@ export function GoogleConnectDialog({
     const authUrl =
       `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${clientId}` +
-      `&redirect_uri=${encodeURIComponent(cleanRedirectUri)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` + // Use redirectUri directly
       `&response_type=code` +
       `&scope=${encodeURIComponent(scope)}` +
       `&access_type=offline` +
@@ -92,7 +91,7 @@ export function GoogleConnectDialog({
     // Store that we're in the middle of Google OAuth
     sessionStorage.setItem("googleOAuthInProgress", "true");
 
-    console.log("🔗 Redirecting to Google OAuth with scopes:", scope);
+    console.log("🔗 Redirecting to Google OAuth...");
     window.location.href = authUrl;
   };
 
