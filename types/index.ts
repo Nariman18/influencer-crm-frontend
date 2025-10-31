@@ -164,9 +164,11 @@ export interface BulkOperationResult {
   success: number;
   failed: number;
   errors: Array<{
-    index: number;
+    influencerId: string;
     error: string;
   }>;
+  queued?: string[];
+  message?: string;
 }
 
 export interface ImportInfluencerData {
@@ -225,20 +227,6 @@ export interface DuplicateInfluencer {
   email?: string;
   instagramHandle?: string;
   status: InfluencerStatus;
-}
-
-// Fix the InfluencerFormData interface to handle both string (form) and number (API) types
-export interface InfluencerFormData {
-  name: string;
-  email: string;
-  instagramHandle: string;
-  followers: string;
-  engagementRate: string;
-  niche: string;
-  country: string;
-  status: InfluencerStatus;
-  notes: string;
-  lastContactDate?: string;
 }
 
 // Create a separate interface for API submission

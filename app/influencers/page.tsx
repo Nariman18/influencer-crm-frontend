@@ -22,12 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { influencerApi } from "@/lib/api/services";
 import { Influencer, InfluencerStatus } from "@/types";
 import { toast } from "sonner";
-import { Plus, Search, Trash2, Mail, FileText } from "lucide-react";
+import { Plus, Search, Trash2, Mail, FileText, Users } from "lucide-react";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils";
+import { BulkSendEmailDialog } from "@/components/emails/bulk-send-email-dialog";
 
 const statusColors: Record<InfluencerStatus, string> = {
   PING_1: "bg-blue-100 text-blue-800",
@@ -45,6 +47,10 @@ export default function InfluencersPage() {
   const [statusFilter, setStatusFilter] = useState<InfluencerStatus | "ALL">(
     "ALL"
   );
+  const [selectedInfluencers, setSelectedInfluencers] = useState<Influencer[]>(
+    []
+  );
+  const [bulkEmailDialogOpen, setBulkEmailDialogOpen] = useState(false);
 
   const { data: influencers, isLoading } = useQuery({
     queryKey: ["influencers", page, search, statusFilter],
@@ -70,6 +76,33 @@ export default function InfluencersPage() {
     },
   });
 
+  const handleSelectInfluencer = (influencer: Influencer, checked: boolean) => {
+    if (checked) {
+      setSelectedInfluencers((prev) => [...prev, influencer]);
+    } else {
+      setSelectedInfluencers((prev) =>
+        prev.filter((i) => i.id !== influencer.id)
+      );
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && influencers?.data) {
+      setSelectedInfluencers(influencers.data);
+    } else {
+      setSelectedInfluencers([]);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedInfluencers([]);
+  };
+
+  const isAllSelected =
+    influencers?.data &&
+    selectedInfluencers.length === influencers.data.length &&
+    influencers.data.length > 0;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -80,12 +113,32 @@ export default function InfluencersPage() {
               Manage your influencer database
             </p>
           </div>
-          <Link href="/influencers/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Influencer
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {selectedInfluencers.length > 0 && (
+              <div className="flex items-center gap-2 mr-4">
+                <Badge variant="secondary" className="px-3 py-1">
+                  {selectedInfluencers.length} selected
+                </Badge>
+                <Button
+                  onClick={() => setBulkEmailDialogOpen(true)}
+                  disabled={!selectedInfluencers.some((i) => i.email)}
+                  size="sm"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Bulk Email
+                </Button>
+                <Button variant="outline" onClick={clearSelection} size="sm">
+                  Clear
+                </Button>
+              </div>
+            )}
+            <Link href="/influencers/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Influencer
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Filters */}
@@ -102,9 +155,10 @@ export default function InfluencersPage() {
             </div>
             <Select
               value={statusFilter}
-              onValueChange={(value) =>
-                setStatusFilter(value as InfluencerStatus | "ALL")
-              }
+              onValueChange={(value) => {
+                setStatusFilter(value as InfluencerStatus | "ALL");
+                clearSelection(); // Clear selection when filter changes
+              }}
             >
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Filter by status" />
@@ -127,6 +181,13 @@ export default function InfluencersPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all influencers"
+                  />
+                </TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Instagram</TableHead>
@@ -140,14 +201,14 @@ export default function InfluencersPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : influencers?.data.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={9}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No influencers found
@@ -155,7 +216,18 @@ export default function InfluencersPage() {
                 </TableRow>
               ) : (
                 influencers?.data.map((influencer: Influencer) => (
-                  <TableRow key={influencer.id}>
+                  <TableRow key={influencer.id} className="group">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedInfluencers.some(
+                          (i) => i.id === influencer.id
+                        )}
+                        onCheckedChange={(checked) =>
+                          handleSelectInfluencer(influencer, checked as boolean)
+                        }
+                        aria-label={`Select ${influencer.name}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       <Link
                         href={`/influencers/${influencer.id}`}
@@ -183,19 +255,12 @@ export default function InfluencersPage() {
                     </TableCell>
                     <TableCell>{influencer.niche || "-"}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
+                      <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Link href={`/influencers/${influencer.id}`}>
                           <Button variant="ghost" size="sm">
                             View
                           </Button>
                         </Link>
-                        {influencer.email && (
-                          <Link href={`/influencers/${influencer.id}#email`}>
-                            <Button variant="ghost" size="sm">
-                              <Mail className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -218,7 +283,10 @@ export default function InfluencersPage() {
           <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => {
+                setPage((p) => Math.max(1, p - 1));
+                clearSelection();
+              }}
               disabled={page === 1}
             >
               Previous
@@ -228,7 +296,10 @@ export default function InfluencersPage() {
             </span>
             <Button
               variant="outline"
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => {
+                setPage((p) => p + 1);
+                clearSelection();
+              }}
               disabled={page === influencers.pagination.totalPages}
             >
               Next
@@ -236,6 +307,14 @@ export default function InfluencersPage() {
           </div>
         )}
       </div>
+
+      {/* Bulk Email Dialog */}
+      <BulkSendEmailDialog
+        open={bulkEmailDialogOpen}
+        onOpenChange={setBulkEmailDialogOpen}
+        selectedInfluencers={selectedInfluencers}
+        onSelectionClear={clearSelection}
+      />
     </DashboardLayout>
   );
 }
