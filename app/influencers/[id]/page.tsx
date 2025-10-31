@@ -240,7 +240,7 @@ export default function InfluencerDetailsPage() {
                       <div>
                         <p className="text-sm font-medium">Instagram</p>
                         <p className="text-sm text-muted-foreground">
-                          @{influencer.instagramHandle}
+                          {influencer.instagramHandle}
                         </p>
                       </div>
                     </div>

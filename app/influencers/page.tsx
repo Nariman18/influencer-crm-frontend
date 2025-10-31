@@ -26,7 +26,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { influencerApi } from "@/lib/api/services";
 import { Influencer, InfluencerStatus } from "@/types";
 import { toast } from "sonner";
-import { Plus, Search, Trash2, Mail, FileText, Users } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Trash2,
+  Mail,
+  FileText,
+  Users,
+  MailCheck,
+  MailX,
+} from "lucide-react";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils";
 import { BulkSendEmailDialog } from "@/components/emails/bulk-send-email-dialog";
@@ -47,19 +56,28 @@ export default function InfluencersPage() {
   const [statusFilter, setStatusFilter] = useState<InfluencerStatus | "ALL">(
     "ALL"
   );
+  const [emailFilter, setEmailFilter] = useState<
+    "ALL" | "HAS_EMAIL" | "NO_EMAIL"
+  >("ALL");
   const [selectedInfluencers, setSelectedInfluencers] = useState<Influencer[]>(
     []
   );
   const [bulkEmailDialogOpen, setBulkEmailDialogOpen] = useState(false);
 
   const { data: influencers, isLoading } = useQuery({
-    queryKey: ["influencers", page, search, statusFilter],
+    queryKey: ["influencers", page, search, statusFilter, emailFilter],
     queryFn: async () => {
       const response = await influencerApi.getAll({
         page,
         limit: 20,
         search: search || undefined,
         status: statusFilter !== "ALL" ? statusFilter : undefined,
+        hasEmail:
+          emailFilter === "HAS_EMAIL"
+            ? true
+            : emailFilter === "NO_EMAIL"
+            ? false
+            : undefined,
       });
       return response.data;
     },
@@ -103,6 +121,17 @@ export default function InfluencersPage() {
     selectedInfluencers.length === influencers.data.length &&
     influencers.data.length > 0;
 
+  // Count influencers with emails in current selection
+  const influencersWithEmails = selectedInfluencers.filter(
+    (influencer) => influencer.email
+  );
+
+  // Auto-select only influencers with emails when email filter is active
+  const handleEmailFilterChange = (value: "ALL" | "HAS_EMAIL" | "NO_EMAIL") => {
+    setEmailFilter(value);
+    clearSelection();
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -118,14 +147,24 @@ export default function InfluencersPage() {
               <div className="flex items-center gap-2 mr-4">
                 <Badge variant="secondary" className="px-3 py-1">
                   {selectedInfluencers.length} selected
+                  {influencersWithEmails.length > 0 && (
+                    <span className="ml-1 text-green-600">
+                      ({influencersWithEmails.length} with email)
+                    </span>
+                  )}
                 </Badge>
                 <Button
                   onClick={() => setBulkEmailDialogOpen(true)}
-                  disabled={!selectedInfluencers.some((i) => i.email)}
+                  disabled={influencersWithEmails.length === 0}
                   size="sm"
                 >
                   <Mail className="h-4 w-4 mr-2" />
                   Send Bulk Email
+                  {influencersWithEmails.length > 0 && (
+                    <span className="ml-1">
+                      ({influencersWithEmails.length})
+                    </span>
+                  )}
                 </Button>
                 <Button variant="outline" onClick={clearSelection} size="sm">
                   Clear
@@ -143,13 +182,16 @@ export default function InfluencersPage() {
 
         {/* Filters */}
         <Card className="p-4">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
+          <div className="flex gap-4 flex-wrap">
+            <div className="flex-1 min-w-[300px] relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name, email, or Instagram..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  clearSelection();
+                }}
                 className="pl-10"
               />
             </div>
@@ -157,7 +199,7 @@ export default function InfluencersPage() {
               value={statusFilter}
               onValueChange={(value) => {
                 setStatusFilter(value as InfluencerStatus | "ALL");
-                clearSelection(); // Clear selection when filter changes
+                clearSelection();
               }}
             >
               <SelectTrigger className="w-48">
@@ -173,8 +215,84 @@ export default function InfluencersPage() {
                 <SelectItem value="COMPLETED">Completed</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* New Email Filter */}
+            <Select value={emailFilter} onValueChange={handleEmailFilterChange}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by email" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    All Influencers
+                  </div>
+                </SelectItem>
+                <SelectItem value="HAS_EMAIL">
+                  <div className="flex items-center gap-2">
+                    <MailCheck className="h-4 w-4 text-green-600" />
+                    Has Email Address
+                  </div>
+                </SelectItem>
+                <SelectItem value="NO_EMAIL">
+                  <div className="flex items-center gap-2">
+                    <MailX className="h-4 w-4 text-orange-600" />
+                    No Email Address
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </Card>
+
+        {/* Stats Bar */}
+        <div className="grid grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Total
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {influencers?.pagination.total || 0}
+                  </p>
+                </div>
+                <Users className="h-8 w-8 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    With Email
+                  </p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {influencers?.data?.filter((i) => i.email).length || 0}
+                  </p>
+                </div>
+                <MailCheck className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    No Email
+                  </p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {influencers?.data?.filter((i) => !i.email).length || 0}
+                  </p>
+                </div>
+                <MailX className="h-8 w-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Table */}
         <Card>
@@ -189,7 +307,14 @@ export default function InfluencersPage() {
                   />
                 </TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    Email
+                    {emailFilter === "HAS_EMAIL" && (
+                      <MailCheck className="h-3 w-3 text-green-600" />
+                    )}
+                  </div>
+                </TableHead>
                 <TableHead>Instagram</TableHead>
                 <TableHead>Followers</TableHead>
                 <TableHead>Engagement</TableHead>
@@ -236,10 +361,23 @@ export default function InfluencersPage() {
                         {influencer.name}
                       </Link>
                     </TableCell>
-                    <TableCell>{influencer.email || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {influencer.email ? (
+                          <>
+                            <MailCheck className="h-3 w-3 text-green-600" />
+                            <span className="text-green-700">
+                              {influencer.email}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {influencer.instagramHandle
-                        ? `@${influencer.instagramHandle}`
+                        ? `${influencer.instagramHandle}`
                         : "-"}
                     </TableCell>
                     <TableCell>{formatNumber(influencer.followers)}</TableCell>
@@ -312,7 +450,7 @@ export default function InfluencersPage() {
       <BulkSendEmailDialog
         open={bulkEmailDialogOpen}
         onOpenChange={setBulkEmailDialogOpen}
-        selectedInfluencers={selectedInfluencers}
+        selectedInfluencers={selectedInfluencers.filter((i) => i.email)} // Only pass influencers with emails
         onSelectionClear={clearSelection}
       />
     </DashboardLayout>

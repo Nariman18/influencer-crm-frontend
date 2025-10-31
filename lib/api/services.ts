@@ -65,6 +65,7 @@ export const influencerApi = {
     limit?: number;
     status?: InfluencerStatus;
     search?: string;
+    hasEmail?: boolean;
   }) =>
     apiClient.get<PaginatedResponse<Influencer>>("/influencers", { params }),
 
