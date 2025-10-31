@@ -245,54 +245,89 @@ export default function InfluencersPage() {
           </div>
         </Card>
 
-        {/* Stats Bar */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Total
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {influencers?.pagination.total || 0}
-                  </p>
+        {/* Stats Bar - Only show when viewing ALL influencers */}
+        {emailFilter === "ALL" && (
+          <div className="grid grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Total
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {influencers?.pagination.total || 0}
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <Users className="h-8 w-8 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    With Email
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {influencers?.data?.filter((i) => i.email).length || 0}
-                  </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      With Email
+                    </p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {influencers?.data?.filter((i) => i.email).length || 0}
+                    </p>
+                  </div>
+                  <MailCheck className="h-8 w-8 text-green-600" />
                 </div>
-                <MailCheck className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    No Email
-                  </p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {influencers?.data?.filter((i) => !i.email).length || 0}
-                  </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      No Email
+                    </p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {influencers?.data?.filter((i) => !i.email).length || 0}
+                    </p>
+                  </div>
+                  <MailX className="h-8 w-8 text-orange-600" />
                 </div>
-                <MailX className="h-8 w-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Stats Bar - When filtering by email status */}
+        {emailFilter !== "ALL" && (
+          <div className="grid grid-cols-1 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {emailFilter === "HAS_EMAIL"
+                        ? "Influencers with Email Addresses"
+                        : "Influencers without Email Addresses"}
+                    </p>
+                    <p
+                      className={`text-2xl font-bold ${
+                        emailFilter === "HAS_EMAIL"
+                          ? "text-green-600"
+                          : "text-orange-600"
+                      }`}
+                    >
+                      {influencers?.pagination.total || 0}
+                    </p>
+                  </div>
+                  {emailFilter === "HAS_EMAIL" ? (
+                    <MailCheck className="h-8 w-8 text-green-600" />
+                  ) : (
+                    <MailX className="h-8 w-8 text-orange-600" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Table */}
         <Card>
@@ -336,7 +371,11 @@ export default function InfluencersPage() {
                     colSpan={9}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No influencers found
+                    {emailFilter === "HAS_EMAIL"
+                      ? "No influencers with email addresses found"
+                      : emailFilter === "NO_EMAIL"
+                      ? "No influencers without email addresses found"
+                      : "No influencers found"}
                   </TableCell>
                 </TableRow>
               ) : (
