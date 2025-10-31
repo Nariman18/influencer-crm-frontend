@@ -24,6 +24,8 @@ export enum ContractStatus {
 
 export enum EmailStatus {
   PENDING = "PENDING",
+  QUEUED = "QUEUED",
+  PROCESSING = "PROCESSING",
   SENT = "SENT",
   FAILED = "FAILED",
   OPENED = "OPENED",

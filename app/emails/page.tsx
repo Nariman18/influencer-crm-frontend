@@ -27,10 +27,12 @@ import { Search } from "lucide-react";
 
 const statusColors: Record<EmailStatus, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
+  QUEUED: "bg-blue-100 text-blue-800",
+  PROCESSING: "bg-orange-100 text-orange-800",
   SENT: "bg-green-100 text-green-800",
   FAILED: "bg-red-100 text-red-800",
-  OPENED: "bg-blue-100 text-blue-800",
-  REPLIED: "bg-purple-100 text-purple-800",
+  OPENED: "bg-purple-100 text-purple-800",
+  REPLIED: "bg-indigo-100 text-indigo-800",
 };
 
 export default function EmailsPage() {
@@ -40,10 +42,7 @@ export default function EmailsPage() {
   const { data: emails, isLoading } = useQuery({
     queryKey: ["emails", search, statusFilter],
     queryFn: async () => {
-      // Remove the search parameter since it's not in the API type
-      const response = await emailApi.getAll({
-        // You can add influencerId or other valid params here if needed
-      });
+      const response = await emailApi.getAll({});
       return response.data;
     },
   });
@@ -102,8 +101,10 @@ export default function EmailsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="SENT">Sent</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="QUEUED">Queued</SelectItem>
+                <SelectItem value="PROCESSING">Processing</SelectItem>
+                <SelectItem value="SENT">Sent</SelectItem>
                 <SelectItem value="FAILED">Failed</SelectItem>
                 <SelectItem value="OPENED">Opened</SelectItem>
                 <SelectItem value="REPLIED">Replied</SelectItem>
