@@ -67,7 +67,7 @@ export default function InfluencersPage() {
   const { data: influencers, isLoading } = useQuery({
     queryKey: ["influencers", page, search, statusFilter, emailFilter],
     queryFn: async () => {
-      const response = await influencerApi.getAll({
+      const params = {
         page,
         limit: 20,
         search: search || undefined,
@@ -78,7 +78,19 @@ export default function InfluencersPage() {
             : emailFilter === "NO_EMAIL"
             ? false
             : undefined,
+      };
+
+      console.log("Sending request with params:", params);
+
+      const response = await influencerApi.getAll(params);
+
+      console.log("Received response:", {
+        total: response.data.pagination.total,
+        dataCount: response.data.data.length,
+        firstFewEmails: response.data.data.slice(0, 5).map((i) => i.email),
+        currentFilter: emailFilter,
       });
+
       return response.data;
     },
   });
