@@ -1,4 +1,3 @@
-// Create lib/hooks/useInfluencersCache.ts
 import { useQuery } from "@tanstack/react-query";
 import { influencerApi } from "@/lib/api/services";
 

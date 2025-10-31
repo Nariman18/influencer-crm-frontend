@@ -164,7 +164,7 @@ export function SendEmailDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={sendMutation.isPending}>
-              {sendMutation.isPending ? "Sending..." : "Send Email"}
+              {sendMutation.isPending ? "Queueing..." : "Queue Email"}
             </Button>
           </div>
         </form>

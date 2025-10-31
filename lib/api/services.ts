@@ -191,6 +191,11 @@ export const emailApi = {
     variables?: Record<string, string>;
   }) => apiClient.post<BulkOperationResult>("/emails/bulk-send", data),
 };
+// QUEUE API
+export const queueApi = {
+  getStats: () => apiClient.get("/queue/stats"),
+  getHealth: () => apiClient.get("/queue/health"),
+};
 
 // Dashboard API
 export const dashboardApi = {
