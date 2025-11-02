@@ -57,8 +57,12 @@ export interface Influencer {
   email?: string;
   instagramHandle?: string;
   followers?: number;
-  engagementRate?: number;
-  niche?: string;
+  managerId?: string;
+  manager?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   country?: string;
   status: InfluencerStatus;
   notes?: string;
@@ -148,6 +152,17 @@ export interface PaginatedResponse<T> {
     total: number;
     totalPages: number;
   };
+}
+
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext?: boolean;
+  hasPrev?: boolean;
+  currentPage?: number;
+  totalCount?: number;
 }
 
 export interface DashboardStats {
@@ -256,8 +271,6 @@ export interface InfluencerFormData {
   email: string;
   instagramHandle: string;
   followers: string;
-  engagementRate: string;
-  niche: string;
   country: string;
   status: InfluencerStatus;
   notes: string;

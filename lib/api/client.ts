@@ -39,14 +39,55 @@ apiClient.interceptors.request.use(
 );
 
 // Response interceptor for error handling (for authenticated client only)
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/auth/login";
+// lib/api/client.ts - Update the interceptor
+apiClient.interceptors.request.use(
+  (config) => {
+    // Safely get token from localStorage (only in browser)
+    let token = null;
+    if (typeof window !== "undefined") {
+      // Try the specific key 'token' first since we know it exists
+      token = localStorage.getItem("token");
+
+      if (token) {
+        console.log("✅ Found token in localStorage.token");
+      } else {
+        // Fallback to other keys
+        token =
+          localStorage.getItem("accessToken") ||
+          localStorage.getItem("authToken") ||
+          null;
+        if (token) {
+          console.log("✅ Found token in fallback location");
+        } else {
+          console.log("❌ No token found in any location");
+        }
+      }
+
+      console.log("🔐 Token details:", {
+        length: token?.length,
+        first10: token?.substring(0, 10) + "...",
+        last10: token ? "..." + token.substring(token.length - 10) : "none",
+      });
     }
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log("✅ Token added to Authorization header");
+    } else {
+      console.log("❌ No token available for request");
+    }
+
+    console.log("🔐 Final request configuration:", {
+      url: config.url,
+      method: config.method,
+      hasAuthHeader: !!config.headers.Authorization,
+      params: config.params,
+    });
+
+    return config;
+  },
+  (error) => {
+    console.log("❌ Request interceptor error:", error);
     return Promise.reject(error);
   }
 );

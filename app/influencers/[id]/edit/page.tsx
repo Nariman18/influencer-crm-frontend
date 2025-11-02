@@ -27,7 +27,7 @@ import {
   InfluencerFormData,
   ApiError,
   DuplicateInfluencer,
-  InfluencerCreateData,
+  Influencer,
 } from "@/types";
 import { debounce } from "@/lib/utils";
 
@@ -42,8 +42,6 @@ export default function EditInfluencerPage() {
     email: "",
     instagramHandle: "",
     followers: "",
-    engagementRate: "",
-    niche: "",
     country: "",
     status: InfluencerStatus.PING_1,
     notes: "",
@@ -71,7 +69,7 @@ export default function EditInfluencerPage() {
 
   const duplicateCheck = useDuplicateCheck();
   const updateMutation = useMutation({
-    mutationFn: (data: InfluencerCreateData) =>
+    mutationFn: (data: Partial<Influencer>) =>
       influencerApi.update(influencerId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["influencers"] });
@@ -80,14 +78,11 @@ export default function EditInfluencerPage() {
       router.push(`/influencers/${influencerId}`);
     },
     onError: (error: ApiError) => {
-      // Handle backend duplicate error - FIXED: Use duplicate directly, not details.duplicate
       if (
         error.response?.data?.error?.includes("duplicate") ||
         error.response?.data?.duplicate
       ) {
         const duplicate = error.response.data.duplicate;
-
-        // Use type assertion since we know the structure from the backend
         if (duplicate) {
           handleDuplicateDetection(duplicate as DuplicateInfluencer, "both");
         }
@@ -102,18 +97,15 @@ export default function EditInfluencerPage() {
   // Debounced duplicate check with optimizations
   const checkForDuplicates = debounce(
     async (email: string, instagramHandle: string) => {
-      // OPTIMIZATION 1: Minimum length requirements
-      const hasValidEmail = email && email.length >= 5; // At least 5 characters for email
-      const hasValidInstagram = instagramHandle && instagramHandle.length >= 3; // At least 3 characters for Instagram
+      const hasValidEmail = email && email.length >= 5;
+      const hasValidInstagram = instagramHandle && instagramHandle.length >= 3;
 
-      // OPTIMIZATION 2: Skip if no valid input
       if (!hasValidEmail && !hasValidInstagram) {
         setDuplicateWarning(null);
         setIsCheckingDuplicates(false);
         return;
       }
 
-      // OPTIMIZATION 3: Skip incomplete email patterns
       if (
         (hasValidEmail && checkedValues.email === email) ||
         (hasValidInstagram && checkedValues.instagramHandle === instagramHandle)
@@ -131,6 +123,7 @@ export default function EditInfluencerPage() {
         const result = await duplicateCheck.mutateAsync({
           email: hasValidEmail ? email : undefined,
           instagramHandle: hasValidInstagram ? instagramHandle : undefined,
+          excludeId: influencerId, // Exclude current influencer when editing
         });
 
         if (result.isDuplicate && result.duplicate) {
@@ -203,7 +196,6 @@ export default function EditInfluencerPage() {
   const handleChange = (field: keyof InfluencerFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Check for duplicates when email or Instagram handle changes
     if (field === "email" || field === "instagramHandle") {
       checkForDuplicates(
         field === "email" ? value : formData.email,
@@ -214,15 +206,11 @@ export default function EditInfluencerPage() {
 
   const submitForm = () => {
     // Convert form data to API data (string to number conversion)
-    const submitData: InfluencerCreateData = {
+    const submitData: Partial<Influencer> = {
       name: formData.name,
       email: formData.email || undefined,
       instagramHandle: formData.instagramHandle || undefined,
       followers: formData.followers ? parseInt(formData.followers) : undefined,
-      engagementRate: formData.engagementRate
-        ? parseFloat(formData.engagementRate)
-        : undefined,
-      niche: formData.niche || undefined,
       country: formData.country || undefined,
       status: formData.status,
       notes: formData.notes || undefined,
@@ -237,7 +225,6 @@ export default function EditInfluencerPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // If there's a duplicate warning, show the dialog
     if (duplicateWarning && duplicateDialog.duplicate) {
       setDuplicateDialog((prev) => ({ ...prev, open: true }));
       return;
@@ -254,8 +241,6 @@ export default function EditInfluencerPage() {
         email: influencer.email || "",
         instagramHandle: influencer.instagramHandle || "",
         followers: influencer.followers?.toString() || "",
-        engagementRate: influencer.engagementRate?.toString() || "",
-        niche: influencer.niche || "",
         country: influencer.country || "",
         status: influencer.status,
         notes: influencer.notes || "",
@@ -438,30 +423,6 @@ export default function EditInfluencerPage() {
                         handleChange("followers", e.target.value)
                       }
                       placeholder="100000"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">
-                      Engagement Rate (%)
-                    </label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.engagementRate}
-                      onChange={(e) =>
-                        handleChange("engagementRate", e.target.value)
-                      }
-                      placeholder="2.5"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">Niche</label>
-                    <Input
-                      value={formData.niche}
-                      onChange={(e) => handleChange("niche", e.target.value)}
-                      placeholder="Fashion, Travel, Food..."
                     />
                   </div>
 

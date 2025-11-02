@@ -217,7 +217,7 @@ export function BulkSendEmailDialog({
                   setFormData({ ...formData, subject: e.target.value })
                 }
                 placeholder="Email subject"
-                className="w-full px-3 py-2 border rounded-md text-sm resize-none"
+                className="w-full px-3 py-2 border rounded-md text-sm resize-none outline-none focus:border-black"
                 rows={2}
                 required
               />
@@ -227,6 +227,7 @@ export function BulkSendEmailDialog({
               <label className="text-sm font-medium">Body *</label>
               <Textarea
                 value={formData.body}
+                className="focus:border-black"
                 onChange={(e) =>
                   setFormData({ ...formData, body: e.target.value })
                 }

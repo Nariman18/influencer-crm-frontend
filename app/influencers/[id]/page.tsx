@@ -6,7 +6,6 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-// import { Separator } from "@/components/ui/separator";
 import { influencerApi, emailApi, contractApi } from "@/lib/api/services";
 import { InfluencerStatus, ContractStatus } from "@/types";
 import { toast } from "sonner";
@@ -20,13 +19,12 @@ import {
   User,
   Instagram,
   Users,
-  BarChart3,
   MapPin,
-  Tag,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { SendEmailDialog } from "@/components/emails/send-email-dialog";
+import { formatNumber } from "@/lib/utils";
 
 const statusColors: Record<InfluencerStatus, string> = {
   PING_1: "bg-blue-100 text-blue-800",
@@ -72,15 +70,6 @@ export default function InfluencerDetailsPage() {
       toast.error("Failed to delete influencer");
     },
   });
-
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + "M";
-    } else if (num >= 1000) {
-      return (num / 1000).toFixed(1) + "K";
-    }
-    return num.toString();
-  };
 
   if (isLoading) {
     return (
@@ -130,7 +119,7 @@ export default function InfluencerDetailsPage() {
                 </Badge>
                 {influencer.instagramHandle && (
                   <span className="text-muted-foreground">
-                    @{influencer.instagramHandle}
+                    {influencer.instagramHandle}
                   </span>
                 )}
               </div>
@@ -165,7 +154,7 @@ export default function InfluencerDetailsPage() {
           {/* Left Column - Basic Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-2">
@@ -175,20 +164,6 @@ export default function InfluencerDetailsPage() {
                   <p className="text-2xl font-bold mt-2">
                     {influencer.followers
                       ? formatNumber(influencer.followers)
-                      : "N/A"}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Engagement</span>
-                  </div>
-                  <p className="text-2xl font-bold mt-2">
-                    {influencer.engagementRate
-                      ? `${influencer.engagementRate}%`
                       : "N/A"}
                   </p>
                 </CardContent>
@@ -258,13 +233,16 @@ export default function InfluencerDetailsPage() {
                     </div>
                   )}
 
-                  {influencer.niche && (
+                  {influencer.manager && (
                     <div className="flex items-center space-x-2">
-                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      <User className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-sm font-medium">Niche</p>
+                        <p className="text-sm font-medium">Manager</p>
                         <p className="text-sm text-muted-foreground">
-                          {influencer.niche}
+                          {influencer.manager.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {influencer.manager.email}
                         </p>
                       </div>
                     </div>
