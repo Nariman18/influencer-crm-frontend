@@ -56,7 +56,7 @@ export const useInfluencers = () => {
 
         const response = await influencerApi.getAll(params);
 
-        // Update Redux state - use the API response format directly
+        // Use the API response format directly
         dispatch(setInfluencers(response.data.data));
 
         // Map API pagination response to Redux format
