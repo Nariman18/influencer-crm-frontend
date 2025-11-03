@@ -13,7 +13,7 @@ import {
 } from "@/lib/store/slices/influencerSlice";
 import { useCallback } from "react";
 import { Influencer, InfluencerStatus } from "@/types";
-import { useCurrentUser } from "./useCurrentUser"; // Add this import
+import { useCurrentUser } from "./useCurrentUser";
 
 interface ApiParams {
   page?: number;
