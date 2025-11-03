@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { contractApi, influencerApi, campaignApi } from "@/lib/api/services";
-import { ApiError, Campaign, CreateContractData, Influencer } from "@/types";
+import { ApiError, Campaign, CreateContractData } from "@/types";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
@@ -52,16 +52,6 @@ export function CreateContractForm() {
       return response.data;
     },
     enabled: !!influencerId,
-  });
-
-  // Fetch all influencers for selection (if no specific influencer)
-  const { data: influencers } = useQuery({
-    queryKey: ["influencers"],
-    queryFn: async () => {
-      const response = await influencerApi.getAll({ limit: 1000 });
-      return response.data;
-    },
-    enabled: !influencerId, // Only fetch if no specific influencer
   });
 
   const { data: campaigns } = useQuery({

@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { influencerApi } from "@/lib/api/services";
 import { useDuplicateCheck } from "@/lib/hooks/useDuplicateCheck";
 import { DuplicateDetectionDialog } from "@/components/influencers/duplicate-detection-dialog";
 import { toast } from "sonner";
@@ -30,12 +29,12 @@ import {
   Influencer,
 } from "@/types";
 import { debounce } from "@/lib/utils";
-import { useInfluencers } from "@/lib/hooks/useInfluencers"; // Add this import
+import { useInfluencers } from "@/lib/hooks/useInfluencers";
 
 export default function NewInfluencerPage() {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const { createInfluencer, currentUser } = useInfluencers(); // Use the hook
+
+  const { createInfluencer, currentUser } = useInfluencers();
 
   const [formData, setFormData] = useState<InfluencerFormData>({
     name: "",
