@@ -274,7 +274,7 @@ export default function InfluencersPage() {
         {filters.emailFilter === "ALL" && (
           <div className="grid grid-cols-1 gap-4">
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-2 pr-7 pl-7">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
@@ -293,7 +293,7 @@ export default function InfluencersPage() {
         {filters.emailFilter !== "ALL" && (
           <div className="grid grid-cols-1 gap-4">
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-2 pr-7 pl-7">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
