@@ -136,13 +136,6 @@ export default function InfluencerDetailsPage() {
           </div>
           <div className="flex space-x-2">
             <Button
-              onClick={handleCreateContract}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Create Contract
-            </Button>
-            <Button
               onClick={() => setEmailDialogOpen(true)}
               disabled={!influencer.email}
             >

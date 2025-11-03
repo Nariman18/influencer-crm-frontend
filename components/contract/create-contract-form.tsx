@@ -19,7 +19,6 @@ import { contractApi, influencerApi, campaignApi } from "@/lib/api/services";
 import { ApiError, Campaign, CreateContractData } from "@/types";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { User, Instagram, Euro, DollarSign, Calendar } from "lucide-react";
 
@@ -105,6 +104,13 @@ export function CreateContractForm() {
     }));
   };
 
+  const handleBack = () => {
+    if (influencerId) {
+      router.push(`/influencers/${influencerId}`);
+    } else {
+      router.push("/contracts");
+    }
+  };
   // Set the selected influencer and pre-fill data if provided in URL
   useEffect(() => {
     if (influencer && !hasSetInitialData) {
@@ -132,12 +138,11 @@ export function CreateContractForm() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link href="/contracts">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          </Link>
+          <Button variant="outline" size="sm" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+
           <div>
             <h1 className="text-3xl font-bold">Create Contract</h1>
             <p className="text-muted-foreground">
