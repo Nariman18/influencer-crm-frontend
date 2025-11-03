@@ -17,19 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { contractApi, influencerApi, campaignApi } from "@/lib/api/services";
-import { ApiError, Campaign, CreateContractData, Influencer } from "@/types";
+import { ApiError, Campaign, CreateContractData } from "@/types";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import {
-  User,
-  Instagram,
-  Euro,
-  DollarSign,
-  Calendar,
-  FileText,
-} from "lucide-react";
+import { User, Instagram, Euro, DollarSign, Calendar } from "lucide-react";
 
 export default function CreateContractPage() {
   const router = useRouter();
@@ -59,16 +52,6 @@ export default function CreateContractPage() {
       return response.data;
     },
     enabled: !!influencerId,
-  });
-
-  // Fetch all influencers for selection (if no specific influencer)
-  const { data: influencers } = useQuery({
-    queryKey: ["influencers"],
-    queryFn: async () => {
-      const response = await influencerApi.getAll({ limit: 1000 });
-      return response.data;
-    },
-    enabled: !influencerId, // Only fetch if no specific influencer
   });
 
   const { data: campaigns } = useQuery({
