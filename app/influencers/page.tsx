@@ -65,6 +65,7 @@ export default function InfluencersPage() {
     isLoading,
     updateFilters,
     deleteInfluencer,
+    currentUser, // Add currentUser from hook
   } = useInfluencers();
 
   const [bulkEmailDialogOpen, setBulkEmailDialogOpen] = useState(false);
@@ -125,6 +126,21 @@ export default function InfluencersPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Debug info - remove after testing */}
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-blue-800">
+              Current User Info:
+            </p>
+            <p className="text-xs text-blue-700">
+              Name: {currentUser?.name || "Not loaded"} | Email:{" "}
+              {currentUser?.email || "Not loaded"} | Total Influencers:{" "}
+              {influencers.length} | With Manager:{" "}
+              {influencers.filter((i) => i.manager).length}
+            </p>
+          </CardContent>
+        </Card>
+
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Influencers</h1>
@@ -166,6 +182,7 @@ export default function InfluencersPage() {
           </div>
         </div>
 
+        {/* Rest of your existing code remains the same */}
         {/* Filters */}
         <Card className="p-4">
           <div className="flex gap-4 flex-wrap">

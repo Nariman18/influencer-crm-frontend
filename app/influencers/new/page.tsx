@@ -19,7 +19,7 @@ import { influencerApi } from "@/lib/api/services";
 import { useDuplicateCheck } from "@/lib/hooks/useDuplicateCheck";
 import { DuplicateDetectionDialog } from "@/components/influencers/duplicate-detection-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Save, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, AlertTriangle, User } from "lucide-react";
 import Link from "next/link";
 import {
   InfluencerStatus,
@@ -30,10 +30,13 @@ import {
   Influencer,
 } from "@/types";
 import { debounce } from "@/lib/utils";
+import { useInfluencers } from "@/lib/hooks/useInfluencers"; // Add this import
 
 export default function NewInfluencerPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { createInfluencer, currentUser } = useInfluencers(); // Use the hook
+
   const [formData, setFormData] = useState<InfluencerFormData>({
     name: "",
     email: "",
@@ -59,29 +62,7 @@ export default function NewInfluencerPage() {
 
   const duplicateCheck = useDuplicateCheck();
 
-  const createMutation = useMutation({
-    mutationFn: (data: Partial<Influencer>) => influencerApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["influencers"] });
-      toast.success("Influencer created successfully");
-      router.push("/influencers");
-    },
-    onError: (error: ApiError) => {
-      if (
-        error.response?.data?.error?.includes("duplicate") ||
-        error.response?.data?.duplicate
-      ) {
-        const duplicate = error.response.data.duplicate;
-        if (duplicate) {
-          handleDuplicateDetection(duplicate as DuplicateInfluencer, "both");
-        }
-      } else {
-        const message =
-          error.response?.data?.error || "Failed to create influencer";
-        toast.error(message);
-      }
-    },
-  });
+  // Remove the local createMutation since we're using it from useInfluencers
 
   // Debounced duplicate check and optimizations
   const checkForDuplicates = debounce(
@@ -204,7 +185,32 @@ export default function NewInfluencerPage() {
       notes: formData.notes || undefined,
     };
 
-    createMutation.mutate(submitData);
+    console.log("🚀 Creating influencer with data:", submitData);
+    console.log("👤 Current user context:", currentUser);
+
+    createInfluencer(submitData, {
+      onSuccess: (data) => {
+        console.log("✅ Influencer created successfully:", data);
+        toast.success("Influencer created successfully");
+        router.push("/influencers");
+      },
+      onError: (error: ApiError) => {
+        console.error("❌ Failed to create influencer:", error);
+        if (
+          error.response?.data?.error?.includes("duplicate") ||
+          error.response?.data?.duplicate
+        ) {
+          const duplicate = error.response.data.duplicate;
+          if (duplicate) {
+            handleDuplicateDetection(duplicate as DuplicateInfluencer, "both");
+          }
+        } else {
+          const message =
+            error.response?.data?.error || "Failed to create influencer";
+          toast.error(message);
+        }
+      },
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -237,6 +243,27 @@ export default function NewInfluencerPage() {
             </div>
           </div>
         </div>
+
+        {/* Manager Info Card */}
+        {currentUser && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <User className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium">Manager</p>
+                  <p className="text-sm text-muted-foreground">
+                    {currentUser.name} ({currentUser.email})
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    This influencer will be automatically assigned to you as the
+                    manager
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -395,14 +422,9 @@ export default function NewInfluencerPage() {
                     Cancel
                   </Button>
                 </Link>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || isCheckingDuplicates}
-                >
+                <Button type="submit" disabled={isCheckingDuplicates}>
                   <Save className="h-4 w-4 mr-2" />
-                  {createMutation.isPending
-                    ? "Creating..."
-                    : "Create Influencer"}
+                  Create Influencer
                 </Button>
               </div>
             </form>

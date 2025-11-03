@@ -12,7 +12,8 @@ import {
   clearFilters,
 } from "@/lib/store/slices/influencerSlice";
 import { useCallback } from "react";
-import { InfluencerStatus } from "@/types";
+import { Influencer, InfluencerStatus } from "@/types";
+import { useCurrentUser } from "./useCurrentUser"; // Add this import
 
 interface ApiParams {
   page?: number;
@@ -29,10 +30,52 @@ export const useInfluencers = () => {
     (state: RootState) => state.influencers
   );
 
+  // Get current user to verify we're authenticated
+  const { user: currentUser, isAuthenticated } = useCurrentUser();
+
+  // Create influencer mutation
+  const createMutation = useMutation({
+    mutationFn: (data: Partial<Influencer>) => {
+      console.log(
+        "👤 Creating influencer with current user:",
+        currentUser?.name
+      );
+      return influencerApi.create(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["influencers"] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Influencer> }) =>
+      influencerApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["influencers"] });
+      queryClient.invalidateQueries({ queryKey: ["influencer"] }); // For individual influencer pages
+    },
+  });
+
   // Fetch influencers with current filters
   const { data, isLoading, error } = useQuery({
     queryKey: ["influencers", filters],
     queryFn: async () => {
+      // Only fetch if authenticated
+      if (!isAuthenticated || !currentUser) {
+        console.log("🔄 Skipping influencers fetch - not authenticated");
+        dispatch(setInfluencers([]));
+        dispatch(
+          setPagination({
+            currentPage: 1,
+            totalPages: 0,
+            totalCount: 0,
+            hasNext: false,
+            hasPrev: false,
+          })
+        );
+        return { data: [], pagination: { page: 1, totalPages: 0, total: 0 } };
+      }
+
       dispatch(setLoading(true));
 
       try {
@@ -53,8 +96,17 @@ export const useInfluencers = () => {
         }
 
         console.log("🔄 Fetching influencers with params:", params);
+        console.log("👤 Current user:", currentUser.name, currentUser.email);
 
         const response = await influencerApi.getAll(params);
+
+        // Log manager information for debugging
+        response.data.data.forEach((influencer: Influencer) => {
+          console.log(
+            `📊 Influencer: ${influencer.name}, Manager:`,
+            influencer.manager?.name || "None"
+          );
+        });
 
         // Use the API response format directly
         dispatch(setInfluencers(response.data.data));
@@ -73,12 +125,14 @@ export const useInfluencers = () => {
 
         return response.data;
       } catch (err) {
+        console.error("❌ Error fetching influencers:", err);
         dispatch(setError("Failed to fetch influencers"));
         throw err;
       } finally {
         dispatch(setLoading(false));
       }
     },
+    enabled: isAuthenticated, // Only fetch when authenticated
   });
 
   // Update filters
@@ -114,5 +168,8 @@ export const useInfluencers = () => {
     updateFilters: updateInfluencerFilters,
     clearFilters: clearInfluencerFilters,
     deleteInfluencer: deleteMutation.mutate,
+    createInfluencer: createMutation.mutate,
+    updateInfluencer: updateMutation.mutate,
+    currentUser,
   };
 };
