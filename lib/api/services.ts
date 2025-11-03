@@ -79,6 +79,12 @@ export const influencerApi = {
 
   delete: (id: string) => apiClient.delete(`/influencers/${id}`),
 
+  bulkDelete: (ids: string[]) =>
+    apiClient.post<{ message: string; count: number }>(
+      "/influencers/bulk-delete",
+      { ids }
+    ),
+
   bulkUpdateStatus: (ids: string[], status: InfluencerStatus) =>
     apiClient.post<{ message: string; count: number }>(
       "/influencers/bulk/update-status",
@@ -123,6 +129,12 @@ export const contractApi = {
     apiClient.put<Contract>(`/contracts/${id}`, data),
 
   delete: (id: string) => apiClient.delete(`/contracts/${id}`),
+
+  bulkDelete: (ids: string[]) =>
+    apiClient.post<{ message: string; count: number }>(
+      "/contracts/bulk-delete",
+      { ids }
+    ),
 };
 
 // Campaign API

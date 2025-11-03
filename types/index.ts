@@ -56,6 +56,17 @@ export interface Influencer {
   name: string;
   email?: string;
   instagramHandle?: string;
+  nickname?: string;
+  link?: string;
+  contactMethod?: string;
+  paymentMethod?: string;
+  managerComment?: string;
+  statistics?: string;
+  storyViews?: string;
+  averageViews?: string;
+  engagementCount?: string;
+  priceEUR?: number;
+  priceUSD?: number;
   followers?: number;
   managerId?: string;
   manager?: {
@@ -76,6 +87,7 @@ export interface Influencer {
   };
 }
 
+// Contract types
 export interface Contract {
   id: string;
   influencerId: string;
@@ -95,6 +107,29 @@ export interface Contract {
   campaign?: Campaign;
 }
 
+export interface CreateContractData {
+  influencerId: string;
+  campaignId?: string;
+  amount?: number;
+  currency?: string;
+  startDate?: string;
+  endDate?: string;
+  deliverables?: string;
+  terms?: string;
+}
+
+export interface UpdateContractData {
+  status?: ContractStatus;
+  amount?: number;
+  currency?: string;
+  startDate?: string;
+  endDate?: string;
+  deliverables?: string;
+  terms?: string;
+  contractFileUrl?: string;
+}
+
+// Campaign types
 export interface Campaign {
   id: string;
   name: string;

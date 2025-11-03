@@ -138,6 +138,15 @@ const influencersSlice = createSlice({
       );
     },
 
+    removeInfluencers: (state, action: PayloadAction<string[]>) => {
+      state.influencers = state.influencers.filter(
+        (i) => !action.payload.includes(i.id)
+      );
+      state.selectedInfluencers = state.selectedInfluencers.filter(
+        (i) => !action.payload.includes(i.id)
+      );
+    },
+
     clearError: (state) => {
       state.error = null;
     },
@@ -158,6 +167,7 @@ export const {
   addInfluencer,
   updateInfluencer,
   removeInfluencer,
+  removeInfluencers,
   clearError,
 } = influencersSlice.actions;
 

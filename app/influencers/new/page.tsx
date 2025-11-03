@@ -244,27 +244,6 @@ export default function NewInfluencerPage() {
           </div>
         </div>
 
-        {/* Manager Info Card */}
-        {currentUser && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <User className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium">Manager</p>
-                  <p className="text-sm text-muted-foreground">
-                    {currentUser.name} ({currentUser.email})
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    This influencer will be automatically assigned to you as the
-                    manager
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <Card>
           <CardHeader>
             <CardTitle>Influencer Information</CardTitle>

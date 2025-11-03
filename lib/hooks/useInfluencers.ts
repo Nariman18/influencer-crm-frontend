@@ -10,6 +10,7 @@ import {
   updateFilters,
   clearSelectedInfluencers,
   clearFilters,
+  removeInfluencer,
 } from "@/lib/store/slices/influencerSlice";
 import { useCallback } from "react";
 import { Influencer, InfluencerStatus } from "@/types";
@@ -158,9 +159,21 @@ export const useInfluencers = () => {
     },
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => influencerApi.bulkDelete(ids),
+    onSuccess: (response, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["influencers"] });
+      // Remove deleted influencers from state
+      ids.forEach((id) => {
+        dispatch(removeInfluencer(id));
+      });
+      dispatch(clearSelectedInfluencers());
+    },
+  });
+
   return {
     influencers: data?.data || [],
-    pagination: data?.pagination,
+    pagination: useSelector((state: RootState) => state.influencers.pagination),
     filters,
     selectedInfluencers,
     isLoading,
@@ -170,6 +183,7 @@ export const useInfluencers = () => {
     deleteInfluencer: deleteMutation.mutate,
     createInfluencer: createMutation.mutate,
     updateInfluencer: updateMutation.mutate,
+    bulkDeleteInfluencers: bulkDeleteMutation.mutate,
     currentUser,
   };
 };

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +21,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { contractApi } from "@/lib/api/services";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Contract, ContractStatus } from "@/types";
 import { toast } from "sonner";
 import { Search, Download, Eye, Trash2 } from "lucide-react";
+import { useContracts } from "@/lib/hooks/useContracts";
+import { useDispatch } from "react-redux";
+import {
+  addSelectedContract,
+  clearSelectedContracts,
+  removeSelectedContract,
+  setSelectedContracts,
+} from "@/lib/store/slices/contractSlice";
+import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
 
 const statusColors: Record<ContractStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-800",
@@ -37,50 +45,92 @@ const statusColors: Record<ContractStatus, string> = {
 };
 
 export default function ContractsPage() {
-  const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ContractStatus | "ALL">(
-    "ALL"
-  );
+  const dispatch = useDispatch();
+  const {
+    contracts,
+    pagination,
+    filters,
+    selectedContracts,
+    isLoading,
+    updateFilters,
+    deleteContract,
+    bulkDeleteContracts,
+  } = useContracts();
 
-  const { data: contracts, isLoading } = useQuery({
-    queryKey: ["contracts"],
-    queryFn: async () => {
-      const response = await contractApi.getAll();
-      return response.data;
-    },
-  });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<string | null>(null);
 
-  // Filter contracts client-side based on search and status
-  const filteredContracts = useMemo(() => {
-    if (!contracts?.data) return [];
+  const handleSearchChange = (value: string) => {
+    updateFilters({ search: value, page: 1 });
+  };
 
-    return contracts.data.filter((contract: Contract) => {
-      const matchesSearch =
-        search === "" ||
-        contract.influencer?.name
-          ?.toLowerCase()
-          .includes(search.toLowerCase()) ||
-        contract.campaign?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        contract.amount?.toString().includes(search);
+  const handleStatusFilterChange = (value: ContractStatus | "ALL") => {
+    updateFilters({ status: value, page: 1 });
+  };
 
-      const matchesStatus =
-        statusFilter === "ALL" || contract.status === statusFilter;
+  const handleSelectContract = (contract: Contract, checked: boolean) => {
+    if (checked) {
+      dispatch(addSelectedContract(contract));
+    } else {
+      dispatch(removeSelectedContract(contract.id));
+    }
+  };
 
-      return matchesSearch && matchesStatus;
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      dispatch(setSelectedContracts(contracts));
+    } else {
+      dispatch(clearSelectedContracts());
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setContractToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteContract = () => {
+    if (!contractToDelete) return;
+
+    deleteContract(contractToDelete, {
+      onSuccess: () => {
+        toast.success("Contract deleted successfully");
+        setDeleteDialogOpen(false);
+        setContractToDelete(null);
+      },
+      onError: () => {
+        toast.error("Failed to delete contract");
+        setDeleteDialogOpen(false);
+        setContractToDelete(null);
+      },
     });
-  }, [contracts, search, statusFilter]);
+  };
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => contractApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contracts"] });
-      toast.success("Contract deleted successfully");
-    },
-    onError: () => {
-      toast.error("Failed to delete contract");
-    },
-  });
+  const handleBulkDeleteClick = () => {
+    if (selectedContracts.length === 0) {
+      toast.error("Please select contracts to delete");
+      return;
+    }
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const handleBulkDelete = () => {
+    const ids = selectedContracts.map((contract) => contract.id);
+    bulkDeleteContracts(ids, {
+      onSuccess: (response) => {
+        toast.success(
+          `Successfully deleted ${response.data.count} contract(s)`
+        );
+        dispatch(clearSelectedContracts());
+        setBulkDeleteDialogOpen(false);
+      },
+      onError: () => {
+        toast.error("Failed to delete contracts");
+        setBulkDeleteDialogOpen(false);
+      },
+    });
+  };
 
   const formatCurrency = (
     amount: number | undefined,
@@ -93,6 +143,19 @@ export default function ContractsPage() {
     }).format(amount);
   };
 
+  const isAllSelected =
+    selectedContracts.length === contracts.length && contracts.length > 0;
+
+  const currentPage = pagination?.currentPage || 1;
+  const totalPages = pagination?.totalPages || 1;
+  const totalCount = pagination?.totalCount || 0;
+  const hasNext = pagination?.hasNext || false;
+  const hasPrev = pagination?.hasPrev || false;
+
+  const handlePageChange = (newPage: number) => {
+    updateFilters({ page: newPage });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -103,6 +166,28 @@ export default function ContractsPage() {
               Manage influencer contracts and agreements
             </p>
           </div>
+          {selectedContracts.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {selectedContracts.length} selected
+              </span>
+              <Button
+                onClick={handleBulkDeleteClick}
+                variant="destructive"
+                size="sm"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => dispatch(clearSelectedContracts())}
+                size="sm"
+              >
+                Clear
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Filters */}
@@ -112,15 +197,15 @@ export default function ContractsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by influencer, campaign, or amount..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={filters.search || ""}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
               />
             </div>
             <Select
-              value={statusFilter}
+              value={filters.status || "ALL"}
               onValueChange={(value) =>
-                setStatusFilter(value as ContractStatus | "ALL")
+                handleStatusFilterChange(value as ContractStatus | "ALL")
               }
             >
               <SelectTrigger className="w-48">
@@ -144,6 +229,13 @@ export default function ContractsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all contracts"
+                  />
+                </TableHead>
                 <TableHead>Influencer</TableHead>
                 <TableHead>Campaign</TableHead>
                 <TableHead>Amount</TableHead>
@@ -156,22 +248,33 @@ export default function ContractsPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : filteredContracts.length === 0 ? (
+              ) : contracts.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No contracts found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredContracts.map((contract: Contract) => (
-                  <TableRow key={contract.id}>
+                contracts.map((contract: Contract) => (
+                  <TableRow key={contract.id} className="group">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedContracts.some(
+                          (c) => c.id === contract.id
+                        )}
+                        onCheckedChange={(checked) =>
+                          handleSelectContract(contract, checked as boolean)
+                        }
+                        aria-label={`Select contract for ${contract.influencer?.name}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {contract.influencer?.name || "Unknown Influencer"}
                     </TableCell>
@@ -197,7 +300,7 @@ export default function ContractsPage() {
                         : "-"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
+                      <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -209,9 +312,10 @@ export default function ContractsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteMutation.mutate(contract.id)}
+                          onClick={() => handleDeleteClick(contract.id)}
+                          className="text-destructive hover:text-destructive"
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -221,7 +325,52 @@ export default function ContractsPage() {
             </TableBody>
           </Table>
         </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!hasPrev}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages} ({totalCount} total)
+            </span>
+            <Button
+              variant="outline"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!hasNext}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Single Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Contract"
+        description="Are you sure you want to delete this contract? This action cannot be undone."
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={handleDeleteContract}
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+        title="Delete Multiple Contracts"
+        description={`Are you sure you want to delete ${selectedContracts.length} contract(s)? This action cannot be undone.`}
+        confirmText={`Delete ${selectedContracts.length} Contract(s)`}
+        variant="destructive"
+        onConfirm={handleBulkDelete}
+      />
     </DashboardLayout>
   );
 }

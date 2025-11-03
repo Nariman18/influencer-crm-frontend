@@ -4,7 +4,7 @@ import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -32,7 +32,6 @@ import {
   Users,
   MailCheck,
   MailX,
-  User,
 } from "lucide-react";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils";
@@ -45,6 +44,7 @@ import {
 } from "@/lib/store/slices/influencerSlice";
 import { useInfluencers } from "@/lib/hooks/useInfluencers";
 import { useDispatch } from "react-redux";
+import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
 
 const statusColors: Record<InfluencerStatus, string> = {
   PING_1: "bg-blue-100 text-blue-800",
@@ -65,10 +65,15 @@ export default function InfluencersPage() {
     isLoading,
     updateFilters,
     deleteInfluencer,
-    currentUser, // Add currentUser from hook
+    bulkDeleteInfluencers,
   } = useInfluencers();
 
   const [bulkEmailDialogOpen, setBulkEmailDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [influencerToDelete, setInfluencerToDelete] = useState<string | null>(
+    null
+  );
 
   const handleSelectInfluencer = (influencer: Influencer, checked: boolean) => {
     if (checked) {
@@ -86,21 +91,55 @@ export default function InfluencersPage() {
     }
   };
 
-  const handleDeleteInfluencer = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this influencer?")) {
-      deleteInfluencer(id, {
-        onSuccess: () => {
-          toast.success("Influencer deleted successfully");
-        },
-        onError: () => {
-          toast.error("Failed to delete influencer");
-        },
-      });
-    }
+  const handleDeleteClick = (id: string) => {
+    setInfluencerToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteInfluencer = () => {
+    if (!influencerToDelete) return;
+
+    deleteInfluencer(influencerToDelete, {
+      onSuccess: () => {
+        toast.success("Influencer deleted successfully");
+        setDeleteDialogOpen(false);
+        setInfluencerToDelete(null);
+      },
+      onError: () => {
+        toast.error("Failed to delete influencer");
+        setDeleteDialogOpen(false);
+        setInfluencerToDelete(null);
+      },
+    });
   };
 
   const handlePageChange = (newPage: number) => {
     updateFilters({ page: newPage });
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedInfluencers.length === 0) {
+      toast.error("Please select influencers to delete");
+      return;
+    }
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const handleBulkDelete = () => {
+    const ids = selectedInfluencers.map((influencer) => influencer.id);
+    bulkDeleteInfluencers(ids, {
+      onSuccess: (response) => {
+        toast.success(
+          `Successfully deleted ${response.data.count} influencer(s)`
+        );
+        dispatch(clearSelectedInfluencers());
+        setBulkDeleteDialogOpen(false);
+      },
+      onError: () => {
+        toast.error("Failed to delete influencers");
+        setBulkDeleteDialogOpen(false);
+      },
+    });
   };
 
   const isAllSelected =
@@ -111,36 +150,16 @@ export default function InfluencersPage() {
     (influencer) => influencer.email
   );
 
-  // Count stats for display
-  const influencersWithEmailCount = influencers.filter((i) => i.email).length;
-  const influencersWithoutEmailCount =
-    influencers.length - influencersWithEmailCount;
-
   // Use pagination directly from API response
-  const currentPage = pagination?.page || 1;
+  const currentPage = pagination?.currentPage || 1;
   const totalPages = pagination?.totalPages || 1;
-  const totalCount = pagination?.total || 0;
-  const hasNext = currentPage < totalPages;
-  const hasPrev = currentPage > 1;
+  const totalCount = pagination?.totalCount || 0;
+  const hasNext = pagination?.hasNext || false;
+  const hasPrev = pagination?.hasPrev || false;
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Debug info - remove after testing */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-blue-800">
-              Current User Info:
-            </p>
-            <p className="text-xs text-blue-700">
-              Name: {currentUser?.name || "Not loaded"} | Email:{" "}
-              {currentUser?.email || "Not loaded"} | Total Influencers:{" "}
-              {influencers.length} | With Manager:{" "}
-              {influencers.filter((i) => i.manager).length}
-            </p>
-          </CardContent>
-        </Card>
-
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Influencers</h1>
@@ -165,11 +184,12 @@ export default function InfluencersPage() {
                   )}
                 </Button>
                 <Button
-                  variant="outline"
-                  onClick={() => dispatch(clearSelectedInfluencers())}
+                  onClick={handleBulkDeleteClick}
+                  variant="destructive"
                   size="sm"
                 >
-                  Clear
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected
                 </Button>
               </div>
             )}
@@ -182,7 +202,6 @@ export default function InfluencersPage() {
           </div>
         </div>
 
-        {/* Rest of your existing code remains the same */}
         {/* Filters */}
         <Card className="p-4">
           <div className="flex gap-4 flex-wrap">
@@ -424,7 +443,7 @@ export default function InfluencersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteInfluencer(influencer.id)}
+                          onClick={() => handleDeleteClick(influencer.id)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -468,6 +487,28 @@ export default function InfluencersPage() {
         onOpenChange={setBulkEmailDialogOpen}
         selectedInfluencers={selectedInfluencers.filter((i) => i.email)}
         onSelectionClear={() => dispatch(clearSelectedInfluencers())}
+      />
+
+      {/* Single Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Influencer"
+        description="Are you sure you want to delete this influencer? This action cannot be undone."
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={handleDeleteInfluencer}
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+        title="Delete Multiple Influencers"
+        description={`Are you sure you want to delete ${selectedInfluencers.length} influencer(s)? This action cannot be undone.`}
+        confirmText={`Delete ${selectedInfluencers.length} Influencer(s)`}
+        variant="destructive"
+        onConfirm={handleBulkDelete}
       />
     </DashboardLayout>
   );

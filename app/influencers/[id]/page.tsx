@@ -6,7 +6,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { influencerApi, emailApi, contractApi } from "@/lib/api/services";
+import { influencerApi } from "@/lib/api/services";
 import { InfluencerStatus, ContractStatus } from "@/types";
 import { toast } from "sonner";
 import {
@@ -20,6 +20,11 @@ import {
   Instagram,
   Users,
   MapPin,
+  Euro,
+  DollarSign,
+  MessageCircle,
+  CreditCard,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -70,6 +75,10 @@ export default function InfluencerDetailsPage() {
       toast.error("Failed to delete influencer");
     },
   });
+
+  const handleCreateContract = () => {
+    router.push(`/contracts/new?influencerId=${influencerId}`);
+  };
 
   if (isLoading) {
     return (
@@ -127,6 +136,13 @@ export default function InfluencerDetailsPage() {
           </div>
           <div className="flex space-x-2">
             <Button
+              onClick={handleCreateContract}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Create Contract
+            </Button>
+            <Button
               onClick={() => setEmailDialogOpen(true)}
               disabled={!influencer.email}
             >
@@ -154,7 +170,7 @@ export default function InfluencerDetailsPage() {
           {/* Left Column - Basic Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-2">
@@ -169,17 +185,33 @@ export default function InfluencerDetailsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Emails Sent</span>
-                  </div>
-                  <p className="text-2xl font-bold mt-2">
-                    {influencer._count?.emails || 0}
-                  </p>
-                </CardContent>
-              </Card>
+              {influencer.priceEUR && (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <Euro className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Price (€)</span>
+                    </div>
+                    <p className="text-2xl font-bold mt-2">
+                      €{influencer.priceEUR}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {influencer.priceUSD && (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Price ($)</span>
+                    </div>
+                    <p className="text-2xl font-bold mt-2">
+                      ${influencer.priceUSD}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Contact Information */}
@@ -199,6 +231,18 @@ export default function InfluencerDetailsPage() {
                     </div>
                   </div>
 
+                  {influencer.nickname && (
+                    <div className="flex items-center space-x-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Nickname</p>
+                        <p className="text-sm text-muted-foreground">
+                          {influencer.nickname}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -209,6 +253,18 @@ export default function InfluencerDetailsPage() {
                     </div>
                   </div>
 
+                  {influencer.contactMethod && (
+                    <div className="flex items-center space-x-2">
+                      <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Contact Method</p>
+                        <p className="text-sm text-muted-foreground">
+                          {influencer.contactMethod}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {influencer.instagramHandle && (
                     <div className="flex items-center space-x-2">
                       <Instagram className="h-4 w-4 text-muted-foreground" />
@@ -216,6 +272,28 @@ export default function InfluencerDetailsPage() {
                         <p className="text-sm font-medium">Instagram</p>
                         <p className="text-sm text-muted-foreground">
                           {influencer.instagramHandle}
+                        </p>
+                        {influencer.link && (
+                          <a
+                            href={influencer.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            View Profile
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {influencer.paymentMethod && (
+                    <div className="flex items-center space-x-2">
+                      <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Payment Method</p>
+                        <p className="text-sm text-muted-foreground">
+                          {influencer.paymentMethod}
                         </p>
                       </div>
                     </div>
@@ -264,6 +342,71 @@ export default function InfluencerDetailsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Statistics Section */}
+            {(influencer.statistics ||
+              influencer.storyViews ||
+              influencer.averageViews ||
+              influencer.engagementCount) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {influencer.statistics && (
+                      <div className="flex items-center space-x-2">
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Statistics</p>
+                          <p className="text-sm text-muted-foreground">
+                            {influencer.statistics}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {influencer.storyViews && (
+                      <div>
+                        <p className="text-sm font-medium">Story Views</p>
+                        <p className="text-sm text-muted-foreground">
+                          {influencer.storyViews}
+                        </p>
+                      </div>
+                    )}
+                    {influencer.averageViews && (
+                      <div>
+                        <p className="text-sm font-medium">Average Views</p>
+                        <p className="text-sm text-muted-foreground">
+                          {influencer.averageViews}
+                        </p>
+                      </div>
+                    )}
+                    {influencer.engagementCount && (
+                      <div>
+                        <p className="text-sm font-medium">Engagement Count</p>
+                        <p className="text-sm text-muted-foreground">
+                          {influencer.engagementCount}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Manager Comment */}
+            {influencer.managerComment && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Manager Comment</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {influencer.managerComment}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Notes */}
             {influencer.notes && (
@@ -326,12 +469,14 @@ export default function InfluencerDetailsPage() {
                     No contracts yet
                   </p>
                 )}
-                <Link href={`/contracts/new?influencerId=${influencer.id}`}>
-                  <Button className="w-full mt-4" size="sm">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Create Contract
-                  </Button>
-                </Link>
+                <Button
+                  onClick={handleCreateContract}
+                  className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white"
+                  size="sm"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Create Contract
+                </Button>
               </CardContent>
             </Card>
 
