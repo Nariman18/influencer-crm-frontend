@@ -67,7 +67,7 @@ export const useInfluencers = () => {
       try {
         const params: ApiParams = {
           page: filters.page || 1,
-          limit: filters.limit || 20,
+          limit: filters.limit || 50,
         };
 
         if (filters.search) params.search = filters.search;
@@ -159,7 +159,7 @@ export const useInfluencers = () => {
       page: 1,
       totalPages: 1,
       total: 0,
-      limit: 20,
+      limit: 50,
     },
     filters,
     selectedInfluencers,

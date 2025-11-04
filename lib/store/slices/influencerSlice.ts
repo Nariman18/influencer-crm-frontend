@@ -30,7 +30,7 @@ const initialState: InfluencersState = {
     status: "ALL",
     emailFilter: "ALL",
     page: 1,
-    limit: 20,
+    limit: 50,
   },
   isLoading: false,
   error: null,
@@ -94,7 +94,7 @@ const influencersSlice = createSlice({
         status: "ALL",
         emailFilter: "ALL",
         page: 1,
-        limit: 20,
+        limit: 50,
       };
     },
 

@@ -72,13 +72,13 @@ export default function EditContractPage() {
   });
 
   // Fetch campaigns
-  const { data: campaigns } = useQuery({
-    queryKey: ["campaigns"],
-    queryFn: async () => {
-      const response = await campaignApi.getAll({ limit: 1000 });
-      return response.data;
-    },
-  });
+  // const { data: campaigns } = useQuery({
+  //   queryKey: ["campaigns"],
+  //   queryFn: async () => {
+  //     const response = await campaignApi.getAll({ limit: 1000 });
+  //     return response.data;
+  //   },
+  // });
 
   const updateMutation = useMutation({
     mutationFn: (data: UpdateContractData) =>
