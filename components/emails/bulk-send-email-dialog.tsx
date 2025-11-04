@@ -44,6 +44,7 @@ export function BulkSendEmailDialog({
     subject: "",
     body: "",
   });
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["email-templates"],
@@ -60,24 +61,26 @@ export function BulkSendEmailDialog({
       variables?: Record<string, string>;
     }) => emailApi.bulkSend(data),
     onSuccess: (result) => {
-      // INVALIDATE QUERIES WITHOUT BLOCKING UI
+      // NON-BLOCKING cache updates
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["influencers"] });
         queryClient.invalidateQueries({ queryKey: ["emails"] });
-      }, 100);
+      }, 0);
 
       toast.success(
-        `Queued ${result.data.success} emails for sending${
+        `✅ Queued ${result.data.success} emails for sending${
           result.data.failed > 0 ? `, ${result.data.failed} failed` : ""
         }`
       );
 
-      // Close dialog and reset form
+      // Reset and close
+      setIsProcessing(false);
       onOpenChange(false);
       onSelectionClear();
       setFormData({ templateId: "", subject: "", body: "" });
     },
     onError: (error: ApiError) => {
+      setIsProcessing(false);
       toast.error(
         error.response?.data?.message || "Failed to queue bulk emails"
       );
@@ -117,8 +120,9 @@ export function BulkSendEmailDialog({
       return;
     }
 
-    // Show immediate feedback
-    toast.info(`Queueing ${influencerIds.length} emails...`);
+    // Set processing state but DON'T block UI
+    setIsProcessing(true);
+    toast.info(`📨 Queueing ${influencerIds.length} emails...`);
 
     try {
       await bulkSendMutation.mutateAsync({
@@ -136,6 +140,24 @@ export function BulkSendEmailDialog({
     }
   };
 
+  const handleClose = () => {
+    if (isProcessing) {
+      // Show confirmation if still processing
+      if (
+        confirm(
+          "Emails are still being queued. Are you sure you want to close?"
+        )
+      ) {
+        setIsProcessing(false);
+        onOpenChange(false);
+        onSelectionClear();
+      }
+    } else {
+      onOpenChange(false);
+      onSelectionClear();
+    }
+  };
+
   const influencersWithEmail = selectedInfluencers.filter(
     (influencer) => influencer.email
   );
@@ -143,28 +165,19 @@ export function BulkSendEmailDialog({
     (influencer) => !influencer.email
   );
 
-  const isSubmitting = bulkSendMutation.isPending;
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(newOpen) => {
-        if (!isSubmitting) {
-          onOpenChange(newOpen);
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Bulk Send Email
-            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
           </DialogTitle>
           <DialogDescription>
             Send the same email to {selectedInfluencers.length} selected
             influencers
-            {isSubmitting && " - Processing in background..."}
+            {isProcessing && " - Processing in background..."}
           </DialogDescription>
         </DialogHeader>
 
@@ -178,7 +191,7 @@ export function BulkSendEmailDialog({
                 variant="outline"
                 size="sm"
                 onClick={onSelectionClear}
-                disabled={isSubmitting}
+                disabled={isProcessing}
               >
                 <X className="h-4 w-4 mr-1" />
                 Clear All
@@ -218,7 +231,7 @@ export function BulkSendEmailDialog({
               <Select
                 value={formData.templateId}
                 onValueChange={handleTemplateChange}
-                disabled={isSubmitting || templatesLoading}
+                disabled={isProcessing || templatesLoading}
               >
                 <SelectTrigger>
                   <SelectValue
@@ -250,7 +263,7 @@ export function BulkSendEmailDialog({
                 className="w-full px-3 py-2 border rounded-md text-sm resize-none outline-none focus:border-black disabled:opacity-50 disabled:cursor-not-allowed"
                 rows={2}
                 required
-                disabled={isSubmitting}
+                disabled={isProcessing}
               />
             </div>
 
@@ -265,7 +278,7 @@ export function BulkSendEmailDialog({
                 placeholder="Email body"
                 rows={12}
                 required
-                disabled={isSubmitting}
+                disabled={isProcessing}
               />
             </div>
 
@@ -287,17 +300,17 @@ export function BulkSendEmailDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
+                onClick={handleClose}
+                disabled={isProcessing}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || influencersWithEmail.length === 0}
+                disabled={isProcessing || influencersWithEmail.length === 0}
                 className="min-w-32"
               >
-                {isSubmitting ? (
+                {isProcessing ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Queueing...
