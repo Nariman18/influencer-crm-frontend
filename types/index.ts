@@ -101,8 +101,20 @@ export interface Contract {
   terms?: string;
   signedAt?: string;
   contractFileUrl?: string;
+  nickname?: string;
+  link?: string;
+  contactMethod?: string;
+  paymentMethod?: string;
+  managerComment?: string;
+  statistics?: string;
+  storyViews?: string;
+  averageViews?: string;
+  engagementCount?: string;
+
   createdAt: string;
   updatedAt: string;
+
+  // Relations
   influencer?: Influencer;
   campaign?: Campaign;
 }
@@ -116,6 +128,15 @@ export interface CreateContractData {
   endDate?: string;
   deliverables?: string;
   terms?: string;
+  nickname?: string;
+  link?: string;
+  contactMethod?: string;
+  paymentMethod?: string;
+  managerComment?: string;
+  statistics?: string;
+  storyViews?: string;
+  averageViews?: string;
+  engagementCount?: string;
 }
 
 export interface UpdateContractData {
@@ -123,10 +144,19 @@ export interface UpdateContractData {
   amount?: number;
   currency?: string;
   startDate?: string;
+  link?: string;
   endDate?: string;
   deliverables?: string;
   terms?: string;
   contractFileUrl?: string;
+  nickname?: string;
+  contactMethod?: string;
+  paymentMethod?: string;
+  managerComment?: string;
+  statistics?: string;
+  storyViews?: string;
+  averageViews?: string;
+  engagementCount?: string;
 }
 
 // Campaign types

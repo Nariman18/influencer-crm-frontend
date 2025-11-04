@@ -37,18 +37,38 @@ export default function EditContractPage() {
     deliverables: "",
     terms: "",
     contractFileUrl: "",
+    // New contract fields
+    nickname: "",
+    link: "",
+    contactMethod: "",
+    paymentMethod: "",
+    managerComment: "",
+    statistics: "",
+    storyViews: "",
+    averageViews: "",
+    engagementCount: "",
   });
 
   const [hasSetInitialData, setHasSetInitialData] = useState(false);
 
-  // Fetch contract data
-  const { data: contract, isLoading } = useQuery({
+  // Fetch contract data with better error handling
+  const {
+    data: contract,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["contract", contractId],
     queryFn: async () => {
-      const response = await contractApi.getById(contractId);
-      return response.data;
+      try {
+        const response = await contractApi.getById(contractId);
+        return response.data;
+      } catch (err) {
+        console.error("Error fetching contract:", err);
+        throw err;
+      }
     },
     enabled: !!contractId,
+    retry: 1, // Only retry once
   });
 
   // Fetch campaigns
@@ -74,10 +94,9 @@ export default function EditContractPage() {
     },
   });
 
-  // Populate form when contract data is loaded - fixed useEffect
+  // Populate form when contract data is loaded
   useEffect(() => {
     if (contract && !hasSetInitialData) {
-      // Use requestAnimationFrame to avoid setting state during render
       requestAnimationFrame(() => {
         setFormData({
           status: contract.status,
@@ -92,6 +111,16 @@ export default function EditContractPage() {
           deliverables: contract.deliverables || "",
           terms: contract.terms || "",
           contractFileUrl: contract.contractFileUrl || "",
+          // New contract fields
+          nickname: contract.nickname || "",
+          link: contract.link || "",
+          contactMethod: contract.contactMethod || "",
+          paymentMethod: contract.paymentMethod || "",
+          managerComment: contract.managerComment || "",
+          statistics: contract.statistics || "",
+          storyViews: contract.storyViews || "",
+          averageViews: contract.averageViews || "",
+          engagementCount: contract.engagementCount || "",
         });
         setHasSetInitialData(true);
       });
@@ -110,6 +139,16 @@ export default function EditContractPage() {
       deliverables: formData.deliverables || undefined,
       terms: formData.terms || undefined,
       contractFileUrl: formData.contractFileUrl || undefined,
+      // New contract fields
+      nickname: formData.nickname || undefined,
+      link: formData.link || undefined,
+      contactMethod: formData.contactMethod || undefined,
+      paymentMethod: formData.paymentMethod || undefined,
+      managerComment: formData.managerComment || undefined,
+      statistics: formData.statistics || undefined,
+      storyViews: formData.storyViews || undefined,
+      averageViews: formData.averageViews || undefined,
+      engagementCount: formData.engagementCount || undefined,
     };
 
     updateMutation.mutate(submitData);
@@ -135,15 +174,22 @@ export default function EditContractPage() {
     );
   }
 
-  if (!contract) {
+  if (error || !contract) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold text-muted-foreground">
             Contract not found
           </h1>
+          <p className="text-muted-foreground mt-2">
+            The contract you&apos;re trying to edit doesn&apos;t exist or you
+            don&apos;t have access to it.
+          </p>
           <Link href="/contracts">
-            <Button className="mt-4">Back to Contracts</Button>
+            <Button className="mt-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Contracts
+            </Button>
           </Link>
         </div>
       </DashboardLayout>
@@ -156,10 +202,10 @@ export default function EditContractPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link href="/contracts">
+            <Link href={`/contracts/${contractId}`}>
               <Button variant="outline" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
+                Back to Contract
               </Button>
             </Link>
             <div>
@@ -273,6 +319,125 @@ export default function EditContractPage() {
                         handleChange("contractFileUrl", e.target.value)
                       }
                     />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* New Contract Fields */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Contract Specific Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nickname">Nickname</Label>
+                      <Input
+                        id="nickname"
+                        placeholder="Influencer nickname"
+                        value={formData.nickname}
+                        onChange={(e) =>
+                          handleChange("nickname", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="link">Instagram Link</Label>
+                      <Input
+                        id="link"
+                        placeholder="https://instagram.com/username"
+                        value={formData.link}
+                        onChange={(e) => handleChange("link", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactMethod">Contact Method</Label>
+                      <Input
+                        id="contactMethod"
+                        placeholder="Email, DM, etc."
+                        value={formData.contactMethod}
+                        onChange={(e) =>
+                          handleChange("contactMethod", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="paymentMethod">Payment Method</Label>
+                      <Input
+                        id="paymentMethod"
+                        placeholder="Bank transfer, PayPal, etc."
+                        value={formData.paymentMethod}
+                        onChange={(e) =>
+                          handleChange("paymentMethod", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="managerComment">Manager Comment</Label>
+                    <Textarea
+                      id="managerComment"
+                      placeholder="Additional comments from manager"
+                      rows={2}
+                      value={formData.managerComment}
+                      onChange={(e) =>
+                        handleChange("managerComment", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="statistics">Statistics</Label>
+                      <Input
+                        id="statistics"
+                        placeholder="Engagement rate, reach, etc."
+                        value={formData.statistics}
+                        onChange={(e) =>
+                          handleChange("statistics", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="storyViews">Story Views</Label>
+                      <Input
+                        id="storyViews"
+                        placeholder="Average story views"
+                        value={formData.storyViews}
+                        onChange={(e) =>
+                          handleChange("storyViews", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="averageViews">Average Views</Label>
+                      <Input
+                        id="averageViews"
+                        placeholder="Average post views"
+                        value={formData.averageViews}
+                        onChange={(e) =>
+                          handleChange("averageViews", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="engagementCount">Engagement Count</Label>
+                      <Input
+                        id="engagementCount"
+                        placeholder="Total engagement"
+                        value={formData.engagementCount}
+                        onChange={(e) =>
+                          handleChange("engagementCount", e.target.value)
+                        }
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

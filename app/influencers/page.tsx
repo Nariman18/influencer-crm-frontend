@@ -32,6 +32,7 @@ import {
   Users,
   MailCheck,
   MailX,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils";
@@ -409,9 +410,31 @@ export default function InfluencersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {influencer.instagramHandle
-                        ? `${influencer.instagramHandle}`
-                        : "-"}
+                      {influencer.link ? (
+                        <Link
+                          href={influencer.link}
+                          className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {influencer.instagramHandle || "View Profile"}
+                        </Link>
+                      ) : influencer.instagramHandle ? (
+                        // Construct link from handle if no direct link
+                        <Link
+                          href={`${influencer.instagramHandle.replace(
+                            "@",
+                            ""
+                          )}`}
+                          className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {influencer.instagramHandle}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>{formatNumber(influencer.followers)}</TableCell>
                     <TableCell>
@@ -434,11 +457,9 @@ export default function InfluencersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-end items-center space-x-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Link href={`/influencers/${influencer.id}`}>
-                          <Button variant="ghost" size="sm">
-                            View
-                          </Button>
+                          <Eye className="h-4 w-4" />
                         </Link>
                         <Button
                           variant="ghost"

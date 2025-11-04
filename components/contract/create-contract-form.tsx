@@ -38,6 +38,16 @@ export function CreateContractForm() {
     endDate: "",
     deliverables: "",
     terms: "",
+    // New contract fields
+    nickname: "",
+    link: "",
+    contactMethod: "",
+    paymentMethod: "",
+    managerComment: "",
+    statistics: "",
+    storyViews: "",
+    averageViews: "",
+    engagementCount: "",
   });
 
   const [hasSetInitialData, setHasSetInitialData] = useState(false);
@@ -67,7 +77,13 @@ export function CreateContractForm() {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
       queryClient.invalidateQueries({ queryKey: ["influencers"] });
       toast.success("Contract created successfully");
-      router.push("/contracts");
+
+      // Navigate back to the specific influencer page if we came from there
+      if (influencerId) {
+        router.push(`/influencers/${influencerId}`);
+      } else {
+        router.push("/contracts");
+      }
     },
     onError: (error: ApiError) => {
       toast.error(error.response?.data?.message || "Failed to create contract");
@@ -92,6 +108,16 @@ export function CreateContractForm() {
       endDate: formData.endDate || undefined,
       deliverables: formData.deliverables || undefined,
       terms: formData.terms || undefined,
+      // New contract fields
+      nickname: formData.nickname || undefined,
+      link: formData.link || undefined,
+      contactMethod: formData.contactMethod || undefined,
+      paymentMethod: formData.paymentMethod || undefined,
+      managerComment: formData.managerComment || undefined,
+      statistics: formData.statistics || undefined,
+      storyViews: formData.storyViews || undefined,
+      averageViews: formData.averageViews || undefined,
+      engagementCount: formData.engagementCount || undefined,
     };
 
     createMutation.mutate(submitData);
@@ -111,6 +137,7 @@ export function CreateContractForm() {
       router.push("/contracts");
     }
   };
+
   // Set the selected influencer and pre-fill data if provided in URL
   useEffect(() => {
     if (influencer && !hasSetInitialData) {
@@ -127,6 +154,16 @@ export function CreateContractForm() {
             : influencer.priceEUR
             ? "EUR"
             : "USD",
+          // Pre-fill influencer data for the new contract fields
+          nickname: influencer.nickname || "",
+          link: influencer.link || "",
+          contactMethod: influencer.contactMethod || "",
+          paymentMethod: influencer.paymentMethod || "",
+          managerComment: influencer.managerComment || "",
+          statistics: influencer.statistics || "",
+          storyViews: influencer.storyViews || "",
+          averageViews: influencer.averageViews || "",
+          engagementCount: influencer.engagementCount || "",
         }));
         setHasSetInitialData(true);
       });
@@ -155,91 +192,13 @@ export function CreateContractForm() {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Influencer Info & Selection */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Influencer Details Card (only show if influencer is selected) */}
-            {influencer && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Influencer Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{influencer.name}</p>
-                      {influencer.nickname && (
-                        <p className="text-xs text-muted-foreground">
-                          {influencer.nickname}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {influencer.instagramHandle && (
-                    <div className="flex items-center space-x-3">
-                      <Instagram className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm">@{influencer.instagramHandle}</p>
-                        {influencer.followers && (
-                          <p className="text-xs text-muted-foreground">
-                            {influencer.followers.toLocaleString()} followers
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {(influencer.priceEUR || influencer.priceUSD) && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Suggested Prices:</p>
-                      {influencer.priceEUR && (
-                        <div className="flex items-center space-x-2">
-                          <Euro className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">
-                            €{influencer.priceEUR}
-                          </span>
-                        </div>
-                      )}
-                      {influencer.priceUSD && (
-                        <div className="flex items-center space-x-2">
-                          <DollarSign className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">
-                            ${influencer.priceUSD}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {influencer.contactMethod && (
-                    <div>
-                      <p className="text-sm font-medium">Contact Method</p>
-                      <Badge variant="outline" className="text-xs">
-                        {influencer.contactMethod}
-                      </Badge>
-                    </div>
-                  )}
-
-                  {influencer.paymentMethod && (
-                    <div>
-                      <p className="text-sm font-medium">Payment Method</p>
-                      <p className="text-xs text-muted-foreground">
-                        {influencer.paymentMethod}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Right Column - Contract Form */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Contract Form */}
             <Card>
               <CardHeader>
                 <CardTitle>Contract Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 {/* Campaign Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="campaignId">Campaign</Label>
@@ -323,6 +282,124 @@ export function CreateContractForm() {
                   </div>
                 </div>
 
+                {/* New Ready Influencers Fields */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-lg font-semibold">
+                    Contract Specific Details
+                  </h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nickname">Nickname</Label>
+                      <Input
+                        id="nickname"
+                        placeholder="Influencer nickname"
+                        value={formData.nickname}
+                        onChange={(e) =>
+                          handleChange("nickname", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="link">Instagram Link</Label>
+                      <Input
+                        id="link"
+                        placeholder="https://instagram.com/username"
+                        value={formData.link}
+                        onChange={(e) => handleChange("link", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactMethod">Contact Method</Label>
+                      <Input
+                        id="contactMethod"
+                        placeholder="Email, DM, etc."
+                        value={formData.contactMethod}
+                        onChange={(e) =>
+                          handleChange("contactMethod", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="paymentMethod">Payment Method</Label>
+                      <Input
+                        id="paymentMethod"
+                        placeholder="Bank transfer, PayPal, etc."
+                        value={formData.paymentMethod}
+                        onChange={(e) =>
+                          handleChange("paymentMethod", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="managerComment">Manager Comment</Label>
+                    <Textarea
+                      id="managerComment"
+                      placeholder="Additional comments from manager"
+                      rows={2}
+                      value={formData.managerComment}
+                      onChange={(e) =>
+                        handleChange("managerComment", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="statistics">Statistics</Label>
+                      <Input
+                        id="statistics"
+                        placeholder="Engagement rate, reach, etc."
+                        value={formData.statistics}
+                        onChange={(e) =>
+                          handleChange("statistics", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="storyViews">Story Views</Label>
+                      <Input
+                        id="storyViews"
+                        placeholder="Average story views"
+                        value={formData.storyViews}
+                        onChange={(e) =>
+                          handleChange("storyViews", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="averageViews">Average Views</Label>
+                      <Input
+                        id="averageViews"
+                        placeholder="Average post views"
+                        value={formData.averageViews}
+                        onChange={(e) =>
+                          handleChange("averageViews", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="engagementCount">Engagement Count</Label>
+                      <Input
+                        id="engagementCount"
+                        placeholder="Total engagement"
+                        value={formData.engagementCount}
+                        onChange={(e) =>
+                          handleChange("engagementCount", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Deliverables */}
                 <div className="space-y-2">
                   <Label htmlFor="deliverables">Deliverables</Label>
@@ -350,8 +427,6 @@ export function CreateContractForm() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Submit Button */}
             <div className="flex justify-end">
               <Button
                 type="submit"
@@ -362,6 +437,69 @@ export function CreateContractForm() {
                 {createMutation.isPending ? "Creating..." : "Create Contract"}
               </Button>
             </div>
+          </div>
+
+          {/* Right Column - Influencer Details Card */}
+
+          <div className="lg:col-span-1 space-y-6">
+            {influencer && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Influencer Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{influencer.name}</p>
+                      {influencer.nickname && (
+                        <p className="text-xs text-muted-foreground">
+                          {influencer.nickname}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {influencer.instagramHandle && (
+                    <div className="flex items-center space-x-3">
+                      <Instagram className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm">@{influencer.instagramHandle}</p>
+                        {influencer.followers && (
+                          <p className="text-xs text-muted-foreground">
+                            {influencer.followers.toLocaleString()} followers
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {(influencer.priceEUR || influencer.priceUSD) && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Suggested Prices:</p>
+                      {influencer.priceEUR && (
+                        <div className="flex items-center space-x-2">
+                          <Euro className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">
+                            €{influencer.priceEUR}
+                          </span>
+                        </div>
+                      )}
+                      {influencer.priceUSD && (
+                        <div className="flex items-center space-x-2">
+                          <DollarSign className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">
+                            ${influencer.priceUSD}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Submit Button */}
           </div>
         </div>
       </form>

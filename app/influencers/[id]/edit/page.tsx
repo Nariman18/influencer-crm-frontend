@@ -19,7 +19,7 @@ import { influencerApi } from "@/lib/api/services";
 import { useDuplicateCheck } from "@/lib/hooks/useDuplicateCheck";
 import { DuplicateDetectionDialog } from "@/components/influencers/duplicate-detection-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Save, AlertTriangle, User } from "lucide-react";
+import { ArrowLeft, Save, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import {
   InfluencerStatus,
@@ -30,14 +30,12 @@ import {
   Influencer,
 } from "@/types";
 import { debounce } from "@/lib/utils";
-import { useInfluencers } from "@/lib/hooks/useInfluencers"; // Add this import
 
 export default function EditInfluencerPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
   const influencerId = params.id as string;
-  const { updateInfluencer, currentUser } = useInfluencers(); // Use the hook
 
   const [formData, setFormData] = useState<InfluencerFormData>({
     name: "",
@@ -70,8 +68,31 @@ export default function EditInfluencerPage() {
   });
 
   const duplicateCheck = useDuplicateCheck();
-
-  // Remove the local updateMutation since we're using it from useInfluencers
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<Influencer>) =>
+      influencerApi.update(influencerId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["influencers"] });
+      queryClient.invalidateQueries({ queryKey: ["influencer", influencerId] });
+      toast.success("Influencer updated successfully");
+      router.push(`/influencers/${influencerId}`);
+    },
+    onError: (error: ApiError) => {
+      if (
+        error.response?.data?.error?.includes("duplicate") ||
+        error.response?.data?.duplicate
+      ) {
+        const duplicate = error.response.data.duplicate;
+        if (duplicate) {
+          handleDuplicateDetection(duplicate as DuplicateInfluencer, "both");
+        }
+      } else {
+        const message =
+          error.response?.data?.error || "Failed to update influencer";
+        toast.error(message);
+      }
+    },
+  });
 
   // Debounced duplicate check with optimizations
   const checkForDuplicates = debounce(
@@ -198,37 +219,7 @@ export default function EditInfluencerPage() {
         : undefined,
     };
 
-    console.log("🔄 Updating influencer with data:", submitData);
-    console.log("👤 Current user context:", currentUser);
-
-    updateInfluencer(
-      { id: influencerId, data: submitData },
-      {
-        onSuccess: () => {
-          toast.success("Influencer updated successfully");
-          router.push(`/influencers/${influencerId}`);
-        },
-        onError: (error: ApiError) => {
-          console.error("❌ Failed to update influencer:", error);
-          if (
-            error.response?.data?.error?.includes("duplicate") ||
-            error.response?.data?.duplicate
-          ) {
-            const duplicate = error.response.data.duplicate;
-            if (duplicate) {
-              handleDuplicateDetection(
-                duplicate as DuplicateInfluencer,
-                "both"
-              );
-            }
-          } else {
-            const message =
-              error.response?.data?.error || "Failed to update influencer";
-            toast.error(message);
-          }
-        },
-      }
-    );
+    updateMutation.mutate(submitData);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -307,26 +298,6 @@ export default function EditInfluencerPage() {
             </div>
           </div>
         </div>
-
-        {/* Current Manager Info */}
-        {influencer.manager && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <User className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium">Current Manager</p>
-                  <p className="text-sm text-muted-foreground">
-                    {influencer.manager.name} ({influencer.manager.email})
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    Manager assignment cannot be changed here
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         <Card>
           <CardHeader>
@@ -497,9 +468,14 @@ export default function EditInfluencerPage() {
                     Cancel
                   </Button>
                 </Link>
-                <Button type="submit" disabled={isCheckingDuplicates}>
+                <Button
+                  type="submit"
+                  disabled={updateMutation.isPending || isCheckingDuplicates}
+                >
                   <Save className="h-4 w-4 mr-2" />
-                  Update Influencer
+                  {updateMutation.isPending
+                    ? "Updating..."
+                    : "Update Influencer"}
                 </Button>
               </div>
             </form>

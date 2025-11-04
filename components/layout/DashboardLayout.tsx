@@ -92,7 +92,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border flex flex-col">
         <div className="p-6 border-b border-border">
-          <h1 className="text-2xl font-bold text-primary">Influencer CRM</h1>
+          <Link href="/dashboard" className="text-2xl font-bold text-primary">
+            Influencer CRM
+          </Link>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">

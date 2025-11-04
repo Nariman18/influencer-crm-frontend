@@ -34,6 +34,7 @@ import {
   setSelectedContracts,
 } from "@/lib/store/slices/contractSlice";
 import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
+import Link from "next/link";
 
 const statusColors: Record<ContractStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-800",
@@ -276,7 +277,12 @@ export default function ContractsPage() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">
-                      {contract.influencer?.name || "Unknown Influencer"}
+                      <Link
+                        href={`/contracts/${contract.id}`}
+                        className="hover:text-primary hover:underline"
+                      >
+                        {contract.influencer?.name || "Unknown Influencer"}
+                      </Link>
                     </TableCell>
                     <TableCell>
                       {contract.campaign?.name || "No Campaign"}
@@ -301,9 +307,11 @@ export default function ContractsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Link href={`/contracts/${contract.id}`}>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
                         {contract.contractFileUrl && (
                           <Button variant="ghost" size="sm">
                             <Download className="h-4 w-4" />
