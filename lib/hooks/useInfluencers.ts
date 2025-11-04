@@ -13,7 +13,7 @@ import {
   removeInfluencer,
 } from "@/lib/store/slices/influencerSlice";
 import { useCallback } from "react";
-import { Influencer, InfluencerStatus } from "@/types";
+import { Influencer, InfluencerStatus, PaginatedResponse } from "@/types";
 import { useCurrentUser } from "./useCurrentUser";
 
 interface ApiParams {
@@ -37,10 +37,6 @@ export const useInfluencers = () => {
   // Create influencer mutation
   const createMutation = useMutation({
     mutationFn: (data: Partial<Influencer>) => {
-      console.log(
-        "👤 Creating influencer with current user:",
-        currentUser?.name
-      );
       return influencerApi.create(data);
     },
     onSuccess: () => {
@@ -53,27 +49,16 @@ export const useInfluencers = () => {
       influencerApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["influencers"] });
-      queryClient.invalidateQueries({ queryKey: ["influencer"] }); // For individual influencer pages
+      queryClient.invalidateQueries({ queryKey: ["influencer"] });
     },
   });
 
-  // Fetch influencers with current filters
+  // **SIMPLIFIED: Use API data directly without complex Redux sync**
   const { data, isLoading, error } = useQuery({
     queryKey: ["influencers", filters],
     queryFn: async () => {
       // Only fetch if authenticated
       if (!isAuthenticated || !currentUser) {
-        console.log("🔄 Skipping influencers fetch - not authenticated");
-        dispatch(setInfluencers([]));
-        dispatch(
-          setPagination({
-            currentPage: 1,
-            totalPages: 0,
-            totalCount: 0,
-            hasNext: false,
-            hasPrev: false,
-          })
-        );
         return { data: [], pagination: { page: 1, totalPages: 0, total: 0 } };
       }
 
@@ -81,15 +66,15 @@ export const useInfluencers = () => {
 
       try {
         const params: ApiParams = {
-          page: filters.page,
-          limit: filters.limit,
+          page: filters.page || 1,
+          limit: filters.limit || 20,
         };
 
         if (filters.search) params.search = filters.search;
         if (filters.status !== "ALL")
           params.status = filters.status as InfluencerStatus;
 
-        // Email filter - use the new parameter name
+        // Email filter
         if (filters.emailFilter === "HAS_EMAIL") {
           params.emailFilter = "has-email";
         } else if (filters.emailFilter === "NO_EMAIL") {
@@ -97,23 +82,14 @@ export const useInfluencers = () => {
         }
 
         console.log("🔄 Fetching influencers with params:", params);
-        console.log("👤 Current user:", currentUser.name, currentUser.email);
 
         const response = await influencerApi.getAll(params);
+        const responseData = response.data;
 
-        // Log manager information for debugging
-        response.data.data.forEach((influencer: Influencer) => {
-          console.log(
-            `📊 Influencer: ${influencer.name}, Manager:`,
-            influencer.manager?.name || "None"
-          );
-        });
+        // **OPTIONAL: Update Redux for other components that need it**
+        dispatch(setInfluencers(responseData.data));
 
-        // Use the API response format directly
-        dispatch(setInfluencers(response.data.data));
-
-        // Map API pagination response to Redux format
-        const apiPagination = response.data.pagination;
+        const apiPagination = responseData.pagination;
         dispatch(
           setPagination({
             currentPage: apiPagination.page,
@@ -124,7 +100,7 @@ export const useInfluencers = () => {
           })
         );
 
-        return response.data;
+        return responseData;
       } catch (err) {
         console.error("❌ Error fetching influencers:", err);
         dispatch(setError("Failed to fetch influencers"));
@@ -133,12 +109,15 @@ export const useInfluencers = () => {
         dispatch(setLoading(false));
       }
     },
-    enabled: isAuthenticated, // Only fetch when authenticated
+    enabled: isAuthenticated,
+    refetchOnWindowFocus: false,
   });
 
-  // Update filters
+  // **SIMPLIFIED: Direct filter updates**
   const updateInfluencerFilters = useCallback(
     (newFilters: Partial<typeof filters>) => {
+      console.log("🔄 Updating filters:", newFilters);
+
       dispatch(updateFilters(newFilters));
       dispatch(clearSelectedInfluencers());
     },
@@ -163,7 +142,6 @@ export const useInfluencers = () => {
     mutationFn: (ids: string[]) => influencerApi.bulkDelete(ids),
     onSuccess: (response, ids) => {
       queryClient.invalidateQueries({ queryKey: ["influencers"] });
-      // Remove deleted influencers from state
       ids.forEach((id) => {
         dispatch(removeInfluencer(id));
       });
@@ -171,15 +149,23 @@ export const useInfluencers = () => {
     },
   });
 
+  // **USE API DATA DIRECTLY - This is the key fix**
+  const apiData = data as PaginatedResponse<Influencer> | undefined;
+
   return {
-    influencers: data?.data || [],
-    pagination: useSelector((state: RootState) => state.influencers.pagination),
+    // **CRITICAL: Use API data directly for real-time updates**
+    influencers: apiData?.data || [],
+    pagination: apiData?.pagination || {
+      page: 1,
+      totalPages: 1,
+      total: 0,
+      limit: 20,
+    },
     filters,
     selectedInfluencers,
     isLoading,
     error,
-
-    currentTotalCount: data?.pagination?.total || 0,
+    currentTotalCount: apiData?.pagination?.total || 0,
     updateFilters: updateInfluencerFilters,
     clearFilters: clearInfluencerFilters,
     deleteInfluencer: deleteMutation.mutate,

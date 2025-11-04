@@ -64,23 +64,29 @@ const influencersSlice = createSlice({
       state,
       action: PayloadAction<Partial<InfluencerFilters>>
     ) => {
-      const oldFilters = { ...state.filters };
+      // Always merge, reset page only on filter changes
       const newFilters = { ...state.filters, ...action.payload };
 
-      // Check if non-page filters changed
-      const filterKeys = ["status", "search", "emailFilter"] as const;
-      const filtersChanged = filterKeys.some(
-        (key) => oldFilters[key] !== newFilters[key]
-      );
+      // Reset page if actual filters changed (not page navigation)
+      const isPageChange = action.payload.page !== undefined;
+      const isFilterChange =
+        state.filters.status !== newFilters.status ||
+        state.filters.search !== newFilters.search ||
+        state.filters.emailFilter !== newFilters.emailFilter;
 
-      // Reset to page 1 only if actual filters changed AND we're not explicitly setting a page
-      const isExplicitPageChange = action.payload.page !== undefined;
-
-      if (filtersChanged && !isExplicitPageChange) {
+      if (isFilterChange && !isPageChange) {
         newFilters.page = 1;
       }
 
       state.filters = newFilters;
+
+      console.log("🔄 Redux filters:", {
+        action: action.payload,
+        isPageChange,
+        isFilterChange,
+        oldPage: state.filters.page,
+        newPage: newFilters.page,
+      });
     },
 
     clearFilters: (state) => {

@@ -60,7 +60,7 @@ export default function InfluencersPage() {
   const dispatch = useDispatch();
   const {
     influencers,
-    pagination,
+    pagination: apiPagination,
     filters,
     selectedInfluencers,
     isLoading,
@@ -69,6 +69,8 @@ export default function InfluencersPage() {
     bulkDeleteInfluencers,
     currentTotalCount,
   } = useInfluencers();
+
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const [bulkEmailDialogOpen, setBulkEmailDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -116,7 +118,12 @@ export default function InfluencersPage() {
   };
 
   const handlePageChange = (newPage: number) => {
-    updateFilters({ page: newPage });
+    if (newPage >= 1 && newPage <= totalPages) {
+      updateFilters({ page: newPage });
+    } else {
+      console.warn("⚠️ Invalid page requested:", newPage);
+      toast.error("Invalid page number");
+    }
   };
 
   const handleBulkDeleteClick = () => {
@@ -153,11 +160,10 @@ export default function InfluencersPage() {
   );
 
   // Use pagination directly from API response
-  const currentPage = pagination?.currentPage || 1;
-  const totalPages = pagination?.totalPages || 1;
-  const totalCount = pagination?.totalCount || 0;
-  const hasNext = pagination?.hasNext || false;
-  const hasPrev = pagination?.hasPrev || false;
+  const currentPage = apiPagination?.page || 1;
+  const totalPages = apiPagination?.totalPages || 1;
+  const hasNext = currentPage < totalPages;
+  const hasPrev = currentPage > 1;
 
   return (
     <DashboardLayout>
@@ -482,27 +488,33 @@ export default function InfluencersPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-4">
             <Button
               variant="outline"
-              onClick={() => {
-                console.log("Previous clicked - current page:", currentPage);
-                handlePageChange(currentPage - 1);
-              }}
-              disabled={currentPage <= 1} // Use simple disabled check
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1 || isLoading}
+              className="min-w-20"
             >
               Previous
             </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                ({currentTotalCount} total)
+              </span>
+              {isLoading && (
+                <span className="text-xs text-blue-500">🔄 Loading...</span>
+              )}
+            </div>
+
             <Button
               variant="outline"
-              onClick={() => {
-                console.log("Next clicked - current page:", currentPage);
-                handlePageChange(currentPage + 1);
-              }}
-              disabled={currentPage >= totalPages} // Use simple disabled check
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages || isLoading}
+              className="min-w-20"
             >
               Next
             </Button>
