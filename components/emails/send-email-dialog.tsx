@@ -22,6 +22,7 @@ import { emailApi, emailTemplateApi } from "@/lib/api/services";
 import { Influencer, EmailTemplate, SendEmailData } from "@/types";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 
 interface SendEmailDialogProps {
   open: boolean;
@@ -41,7 +42,7 @@ export function SendEmailDialog({
     body: "",
   });
 
-  const { data: templates } = useQuery({
+  const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["email-templates"],
     queryFn: async () => {
       const response = await emailTemplateApi.getAll();
@@ -52,16 +53,20 @@ export function SendEmailDialog({
   const sendMutation = useMutation({
     mutationFn: (data: SendEmailData) => emailApi.send(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["influencer", influencer.id],
-      });
-      queryClient.invalidateQueries({ queryKey: ["emails"] });
-      toast.success("Email sent successfully");
+      // Non-blocking cache invalidation
+      setTimeout(() => {
+        queryClient.invalidateQueries({
+          queryKey: ["influencer", influencer.id],
+        });
+        queryClient.invalidateQueries({ queryKey: ["emails"] });
+      }, 100);
+
+      toast.success("Email queued successfully");
       onOpenChange(false);
       setFormData({ templateId: "", subject: "", body: "" });
     },
     onError: () => {
-      toast.error("Failed to send email");
+      toast.error("Failed to queue email");
     },
   });
 
@@ -76,7 +81,7 @@ export function SendEmailDialog({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.subject || !formData.body) {
@@ -84,24 +89,43 @@ export function SendEmailDialog({
       return;
     }
 
-    sendMutation.mutate({
-      influencerId: influencer.id,
-      templateId: formData.templateId || undefined,
-      subject: formData.subject,
-      body: formData.body,
-      variables: {
-        name: influencer.name,
-        email: influencer.email || "",
-        instagramHandle: influencer.instagramHandle || "",
-      },
-    });
+    toast.info("Queueing email...");
+
+    try {
+      await sendMutation.mutateAsync({
+        influencerId: influencer.id,
+        templateId: formData.templateId || undefined,
+        subject: formData.subject,
+        body: formData.body,
+        variables: {
+          name: influencer.name,
+          email: influencer.email || "",
+          instagramHandle: influencer.instagramHandle || "",
+        },
+      });
+    } catch (error) {
+      // Error handled in mutation
+      console.error("Send email error:", error);
+    }
   };
 
+  const isSubmitting = sendMutation.isPending;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(newOpen) => {
+        if (!isSubmitting) {
+          onOpenChange(newOpen);
+        }
+      }}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Send Email to {influencer.name}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Send Email to {influencer.name}
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -109,9 +133,16 @@ export function SendEmailDialog({
             <Select
               value={formData.templateId}
               onValueChange={handleTemplateChange}
+              disabled={isSubmitting || templatesLoading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a template (optional)" />
+                <SelectValue
+                  placeholder={
+                    templatesLoading
+                      ? "Loading templates..."
+                      : "Select a template (optional)"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {templates?.map((template: EmailTemplate) => (
@@ -132,6 +163,7 @@ export function SendEmailDialog({
               }
               placeholder="Email subject"
               required
+              disabled={isSubmitting}
             />
           </div>
 
@@ -145,6 +177,7 @@ export function SendEmailDialog({
               placeholder="Email body"
               rows={10}
               required
+              disabled={isSubmitting}
             />
           </div>
 
@@ -160,11 +193,19 @@ export function SendEmailDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={sendMutation.isPending}>
-              {sendMutation.isPending ? "Queueing..." : "Queue Email"}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Queueing...
+                </>
+              ) : (
+                "Queue Email"
+              )}
             </Button>
           </div>
         </form>

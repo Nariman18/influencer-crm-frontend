@@ -23,7 +23,7 @@ import { ApiError, EmailTemplate, Influencer } from "@/types";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { X, Users, Mail } from "lucide-react";
+import { X, Mail, Loader2 } from "lucide-react";
 
 interface BulkSendEmailDialogProps {
   open: boolean;
@@ -45,7 +45,7 @@ export function BulkSendEmailDialog({
     body: "",
   });
 
-  const { data: templates } = useQuery({
+  const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["email-templates"],
     queryFn: async () => {
       const response = await emailTemplateApi.getAll();
@@ -60,8 +60,11 @@ export function BulkSendEmailDialog({
       variables?: Record<string, string>;
     }) => emailApi.bulkSend(data),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["influencers"] });
-      queryClient.invalidateQueries({ queryKey: ["emails"] });
+      // INVALIDATE QUERIES WITHOUT BLOCKING UI
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["influencers"] });
+        queryClient.invalidateQueries({ queryKey: ["emails"] });
+      }, 100);
 
       toast.success(
         `Queued ${result.data.success} emails for sending${
@@ -69,6 +72,7 @@ export function BulkSendEmailDialog({
         }`
       );
 
+      // Close dialog and reset form
       onOpenChange(false);
       onSelectionClear();
       setFormData({ templateId: "", subject: "", body: "" });
@@ -91,7 +95,7 @@ export function BulkSendEmailDialog({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.templateId) {
@@ -105,7 +109,7 @@ export function BulkSendEmailDialog({
     }
 
     const influencerIds = selectedInfluencers
-      .filter((influencer) => influencer.email) // Only include influencers with email
+      .filter((influencer) => influencer.email)
       .map((influencer) => influencer.id);
 
     if (influencerIds.length === 0) {
@@ -113,16 +117,23 @@ export function BulkSendEmailDialog({
       return;
     }
 
-    bulkSendMutation.mutate({
-      influencerIds,
-      templateId: formData.templateId,
-      variables: {
-        // Global variables that will be personalized for each influencer
-        name: "{{name}}",
-        email: "{{email}}",
-        instagramHandle: "{{instagramHandle}}",
-      },
-    });
+    // Show immediate feedback
+    toast.info(`Queueing ${influencerIds.length} emails...`);
+
+    try {
+      await bulkSendMutation.mutateAsync({
+        influencerIds,
+        templateId: formData.templateId,
+        variables: {
+          name: "{{name}}",
+          email: "{{email}}",
+          instagramHandle: "{{instagramHandle}}",
+        },
+      });
+    } catch (error) {
+      // Error is already handled in mutation
+      console.error("Bulk send error:", error);
+    }
   };
 
   const influencersWithEmail = selectedInfluencers.filter(
@@ -132,17 +143,28 @@ export function BulkSendEmailDialog({
     (influencer) => !influencer.email
   );
 
+  const isSubmitting = bulkSendMutation.isPending;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(newOpen) => {
+        if (!isSubmitting) {
+          onOpenChange(newOpen);
+        }
+      }}
+    >
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Bulk Send Email
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
           </DialogTitle>
           <DialogDescription>
             Send the same email to {selectedInfluencers.length} selected
             influencers
+            {isSubmitting && " - Processing in background..."}
           </DialogDescription>
         </DialogHeader>
 
@@ -156,6 +178,7 @@ export function BulkSendEmailDialog({
                 variant="outline"
                 size="sm"
                 onClick={onSelectionClear}
+                disabled={isSubmitting}
               >
                 <X className="h-4 w-4 mr-1" />
                 Clear All
@@ -195,9 +218,16 @@ export function BulkSendEmailDialog({
               <Select
                 value={formData.templateId}
                 onValueChange={handleTemplateChange}
+                disabled={isSubmitting || templatesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a template" />
+                  <SelectValue
+                    placeholder={
+                      templatesLoading
+                        ? "Loading templates..."
+                        : "Select a template"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {templates?.map((template: EmailTemplate) => (
@@ -217,9 +247,10 @@ export function BulkSendEmailDialog({
                   setFormData({ ...formData, subject: e.target.value })
                 }
                 placeholder="Email subject"
-                className="w-full px-3 py-2 border rounded-md text-sm resize-none outline-none focus:border-black"
+                className="w-full px-3 py-2 border rounded-md text-sm resize-none outline-none focus:border-black disabled:opacity-50 disabled:cursor-not-allowed"
                 rows={2}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -227,13 +258,14 @@ export function BulkSendEmailDialog({
               <label className="text-sm font-medium">Body *</label>
               <Textarea
                 value={formData.body}
-                className="focus:border-black"
+                className="focus:border-black disabled:opacity-50 disabled:cursor-not-allowed"
                 onChange={(e) =>
                   setFormData({ ...formData, body: e.target.value })
                 }
                 placeholder="Email body"
                 rows={12}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -256,19 +288,20 @@ export function BulkSendEmailDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={
-                  bulkSendMutation.isPending ||
-                  influencersWithEmail.length === 0
-                }
+                disabled={isSubmitting || influencersWithEmail.length === 0}
                 className="min-w-32"
               >
-                {bulkSendMutation.isPending ? (
-                  <>Queueing {influencersWithEmail.length} emails...</>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Queueing...
+                  </>
                 ) : (
                   <>Queue {influencersWithEmail.length} Emails</>
                 )}
