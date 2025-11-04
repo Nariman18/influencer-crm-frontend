@@ -502,12 +502,6 @@ export default function InfluencersPage() {
               <span className="text-sm font-medium">
                 Page {currentPage} of {totalPages}
               </span>
-              <span className="text-xs text-muted-foreground">
-                ({currentTotalCount} total)
-              </span>
-              {isLoading && (
-                <span className="text-xs text-blue-500">🔄 Loading...</span>
-              )}
             </div>
 
             <Button
