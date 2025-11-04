@@ -28,7 +28,7 @@ const initialState: ContractsState = {
   filters: {
     status: "ALL",
     page: 1,
-    limit: 20,
+    limit: 30,
   },
   isLoading: false,
   error: null,
@@ -78,7 +78,7 @@ const contractsSlice = createSlice({
       state.filters = {
         status: "ALL",
         page: 1,
-        limit: 20,
+        limit: 30,
       };
     },
 

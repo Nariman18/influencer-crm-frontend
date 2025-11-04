@@ -141,21 +141,11 @@ export function BulkSendEmailDialog({
   };
 
   const handleClose = () => {
-    if (isProcessing) {
-      // Show confirmation if still processing
-      if (
-        confirm(
-          "Emails are still being queued. Are you sure you want to close?"
-        )
-      ) {
-        setIsProcessing(false);
-        onOpenChange(false);
-        onSelectionClear();
-      }
-    } else {
-      onOpenChange(false);
-      onSelectionClear();
-    }
+    // Simple one-click close - no confirmation needed
+    setIsProcessing(false);
+    onOpenChange(false);
+    onSelectionClear();
+    setFormData({ templateId: "", subject: "", body: "" });
   };
 
   const influencersWithEmail = selectedInfluencers.filter(
