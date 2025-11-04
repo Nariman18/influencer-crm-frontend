@@ -73,8 +73,10 @@ const influencersSlice = createSlice({
         (key) => oldFilters[key] !== newFilters[key]
       );
 
-      // Reset to page 1 ONLY if actual filters changed (not page navigation)
-      if (filtersChanged && !action.payload.page) {
+      // Reset to page 1 only if actual filters changed AND we're not explicitly setting a page
+      const isExplicitPageChange = action.payload.page !== undefined;
+
+      if (filtersChanged && !isExplicitPageChange) {
         newFilters.page = 1;
       }
 

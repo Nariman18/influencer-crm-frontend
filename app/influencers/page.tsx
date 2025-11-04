@@ -485,8 +485,11 @@ export default function InfluencersPage() {
           <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={!hasPrev}
+              onClick={() => {
+                console.log("Previous clicked - current page:", currentPage);
+                handlePageChange(currentPage - 1);
+              }}
+              disabled={currentPage <= 1} // Use simple disabled check
             >
               Previous
             </Button>
@@ -495,8 +498,11 @@ export default function InfluencersPage() {
             </span>
             <Button
               variant="outline"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={!hasNext}
+              onClick={() => {
+                console.log("Next clicked - current page:", currentPage);
+                handlePageChange(currentPage + 1);
+              }}
+              disabled={currentPage >= totalPages} // Use simple disabled check
             >
               Next
             </Button>
