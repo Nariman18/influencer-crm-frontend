@@ -178,6 +178,8 @@ export const useInfluencers = () => {
     selectedInfluencers,
     isLoading,
     error,
+
+    currentTotalCount: data?.pagination?.total || 0,
     updateFilters: updateInfluencerFilters,
     clearFilters: clearInfluencerFilters,
     deleteInfluencer: deleteMutation.mutate,

@@ -65,19 +65,20 @@ const influencersSlice = createSlice({
       action: PayloadAction<Partial<InfluencerFilters>>
     ) => {
       const oldFilters = { ...state.filters };
-      state.filters = { ...state.filters, ...action.payload };
+      const newFilters = { ...state.filters, ...action.payload };
 
-      // Only reset to page 1 if actual filters (not page) changed
+      // Check if non-page filters changed
       const filterKeys = ["status", "search", "emailFilter"] as const;
       const filtersChanged = filterKeys.some(
-        (key) => oldFilters[key] !== state.filters[key]
+        (key) => oldFilters[key] !== newFilters[key]
       );
 
+      // Reset to page 1 ONLY if actual filters changed (not page navigation)
       if (filtersChanged && !action.payload.page) {
-        // Reset to page 1 only when search/status/email filters change
-        state.filters.page = 1;
-        state.pagination.currentPage = 1;
+        newFilters.page = 1;
       }
+
+      state.filters = newFilters;
     },
 
     clearFilters: (state) => {

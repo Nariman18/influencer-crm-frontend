@@ -67,6 +67,7 @@ export default function InfluencersPage() {
     updateFilters,
     deleteInfluencer,
     bulkDeleteInfluencers,
+    currentTotalCount,
   } = useInfluencers();
 
   const [bulkEmailDialogOpen, setBulkEmailDialogOpen] = useState(false);
@@ -271,7 +272,7 @@ export default function InfluencersPage() {
           </div>
         </Card>
 
-        {/* Only show when viewing ALL influencers */}
+        {/* Show when viewing ALL influencers */}
         {filters.emailFilter === "ALL" && (
           <div className="grid grid-cols-1 gap-4">
             <Card>
@@ -281,7 +282,8 @@ export default function InfluencersPage() {
                     <p className="text-sm font-medium text-muted-foreground">
                       Total
                     </p>
-                    <p className="text-2xl font-bold">{totalCount || 0}</p>
+                    {/* Use currentTotalCount instead of totalCount from pagination */}
+                    <p className="text-2xl font-bold">{currentTotalCount}</p>
                   </div>
                   <Users className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -309,7 +311,7 @@ export default function InfluencersPage() {
                           : "text-orange-600"
                       }`}
                     >
-                      {totalCount || 0}
+                      {currentTotalCount}
                     </p>
                   </div>
                   {filters.emailFilter === "HAS_EMAIL" ? (
