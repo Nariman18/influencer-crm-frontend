@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ArrowRight, User, Mail, Instagram } from "lucide-react";
 import Link from "next/link";
-import { DuplicateInfluencer, InfluencerStatus } from "@/types";
+import { DuplicateInfluencer } from "@/types";
+import { InfluencerStatus } from "@/lib/shared-types";
 
 interface DuplicateDetectionDialogProps {
   open: boolean;
