@@ -22,7 +22,6 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import {
-  InfluencerStatus,
   DuplicateDialogState,
   InfluencerFormData,
   ApiError,
@@ -30,6 +29,7 @@ import {
   Influencer,
 } from "@/types";
 import { debounce } from "@/lib/utils";
+import { InfluencerStatus } from "@/lib/shared-types";
 
 export default function EditInfluencerPage() {
   const params = useParams();
