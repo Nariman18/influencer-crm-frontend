@@ -1,5 +1,6 @@
+import { ContractStatus } from "@/lib/shared-types";
+import { Contract } from "@/types";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Contract, ContractStatus } from "@/types";
 
 export interface ContractFilters {
   status?: ContractStatus | "ALL";

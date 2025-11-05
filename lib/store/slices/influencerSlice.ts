@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Influencer, InfluencerStatus } from "@/types";
+import { Influencer } from "@/types";
+import { InfluencerStatus } from "@/lib/shared-types";
 
 export interface InfluencerFilters {
   status?: InfluencerStatus | "ALL";

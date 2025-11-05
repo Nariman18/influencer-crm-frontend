@@ -4,8 +4,8 @@ import {
   ApiDuplicateInfluencer,
   DuplicateCheckResult,
   DuplicateInfluencer,
-  InfluencerStatus,
 } from "@/types";
+import { InfluencerStatus } from "../shared-types";
 
 interface DuplicateCheckRequest {
   email?: string;

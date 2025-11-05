@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { contractApi } from "@/lib/api/services";
-import { ContractStatus } from "@/types";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -22,6 +21,7 @@ import {
   FileText,
 } from "lucide-react";
 import Link from "next/link";
+import { ContractStatus } from "@/lib/shared-types";
 
 const statusColors: Record<ContractStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-800",

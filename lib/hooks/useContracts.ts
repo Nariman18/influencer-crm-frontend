@@ -13,7 +13,7 @@ import {
   clearFilters,
 } from "@/lib/store/slices/contractSlice";
 import { useCallback } from "react";
-import { ContractStatus } from "@/types";
+import { ContractStatus } from "../shared-types";
 
 interface ApiParams {
   page?: number;

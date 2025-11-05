@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { influencerApi } from "@/lib/api/services";
-import { InfluencerStatus, ContractStatus } from "@/types";
+
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -30,6 +30,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { SendEmailDialog } from "@/components/emails/send-email-dialog";
 import { formatNumber } from "@/lib/utils";
+import { ContractStatus, InfluencerStatus } from "@/lib/shared-types";
 
 const statusColors: Record<InfluencerStatus, string> = {
   PING_1: "bg-blue-100 text-blue-800",

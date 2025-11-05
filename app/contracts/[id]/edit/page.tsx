@@ -17,10 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { contractApi, campaignApi } from "@/lib/api/services";
-import { UpdateContractData, ContractStatus, ApiError } from "@/types";
+import { UpdateContractData, ApiError } from "@/types";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
+import { ContractStatus } from "@/lib/shared-types";
 
 export default function EditContractPage() {
   const router = useRouter();
