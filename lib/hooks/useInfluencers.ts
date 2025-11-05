@@ -13,8 +13,9 @@ import {
   removeInfluencer,
 } from "@/lib/store/slices/influencerSlice";
 import { useCallback } from "react";
-import { Influencer, InfluencerStatus, PaginatedResponse } from "@/types";
+import { Influencer, PaginatedResponse } from "@/types";
 import { useCurrentUser } from "./useCurrentUser";
+import { InfluencerStatus } from "../shared-types";
 
 interface ApiParams {
   page?: number;

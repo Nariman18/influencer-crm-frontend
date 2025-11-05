@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Contract, ContractStatus } from "@/types";
+import { Contract } from "@/types";
 import { toast } from "sonner";
 import { Search, Download, Eye, Trash2 } from "lucide-react";
 import { useContracts } from "@/lib/hooks/useContracts";
@@ -35,6 +35,7 @@ import {
 } from "@/lib/store/slices/contractSlice";
 import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
 import Link from "next/link";
+import { ContractStatus } from "@/lib/shared-types";
 
 const statusColors: Record<ContractStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-800",

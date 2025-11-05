@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, AlertTriangle, User } from "lucide-react";
 import Link from "next/link";
 import {
-  InfluencerStatus,
   DuplicateDialogState,
   InfluencerFormData,
   ApiError,
@@ -30,6 +29,7 @@ import {
 } from "@/types";
 import { debounce } from "@/lib/utils";
 import { useInfluencers } from "@/lib/hooks/useInfluencers";
+import { InfluencerStatus } from "@/lib/shared-types";
 
 export default function NewInfluencerPage() {
   const router = useRouter();

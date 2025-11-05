@@ -1,4 +1,4 @@
-import { publicApiClient } from "./api/client";
+import apiClient from "./api/client"; // Import default export
 import { GoogleTokens, ApiError } from "@/types";
 
 export class GoogleAuthService {
@@ -10,8 +10,8 @@ export class GoogleAuthService {
       console.log("Exchanging code for tokens via backend...");
       console.log("Code length:", code?.length);
 
-      // Use the public client for this endpoint
-      const response = await publicApiClient.post<GoogleTokens>(
+      // Use the regular apiClient for this endpoint (it will handle auth if needed)
+      const response = await apiClient.post<GoogleTokens>(
         "/auth/google/exchange-token",
         { code }
       );

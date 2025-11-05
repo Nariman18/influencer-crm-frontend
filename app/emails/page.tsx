@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -22,49 +22,119 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { emailApi } from "@/lib/api/services";
-import { Email, EmailStatus } from "@/types";
-import { Search } from "lucide-react";
+import { Email } from "@/types";
+import { EmailStatus, isValidEmailStatus } from "@/lib/shared-types";
+import { Search, AlertCircle, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+
+type StatusFilter = EmailStatus | "ALL";
+
+interface EmailQueryParams {
+  page?: number;
+  limit?: number;
+  status?: EmailStatus;
+  influencerId?: string;
+}
 
 const statusColors: Record<EmailStatus, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  QUEUED: "bg-blue-100 text-blue-800",
-  PROCESSING: "bg-orange-100 text-orange-800",
-  SENT: "bg-green-100 text-green-800",
-  FAILED: "bg-red-100 text-red-800",
-  OPENED: "bg-purple-100 text-purple-800",
-  REPLIED: "bg-indigo-100 text-indigo-800",
+  [EmailStatus.PENDING]: "bg-yellow-100 text-yellow-800",
+  [EmailStatus.QUEUED]: "bg-blue-100 text-blue-800",
+  [EmailStatus.PROCESSING]: "bg-orange-100 text-orange-800",
+  [EmailStatus.SENT]: "bg-green-100 text-green-800",
+  [EmailStatus.FAILED]: "bg-red-100 text-red-800",
+  [EmailStatus.OPENED]: "bg-purple-100 text-purple-800",
+  [EmailStatus.REPLIED]: "bg-indigo-100 text-indigo-800",
 };
 
 export default function EmailsPage() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<EmailStatus | "ALL">("ALL");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
-  const { data: emails, isLoading } = useQuery({
-    queryKey: ["emails", search, statusFilter],
+  const {
+    data: emailsResponse,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["emails", statusFilter],
     queryFn: async () => {
-      const response = await emailApi.getAll({});
+      const params: EmailQueryParams = {};
+
+      if (statusFilter !== "ALL" && isValidEmailStatus(statusFilter)) {
+        params.status = statusFilter;
+      }
+
+      const response = await emailApi.getAll(params);
       return response.data;
     },
+    retry: 1,
+    staleTime: 30000,
   });
 
-  // Filter emails client-side based on search
-  const filteredEmails = emails?.data?.filter((email: Email) => {
+  const handleStatusChange = useCallback((value: string) => {
+    if (value === "ALL") {
+      setStatusFilter("ALL");
+    } else if (isValidEmailStatus(value)) {
+      setStatusFilter(value);
+    } else {
+      console.warn("Invalid EmailStatus value:", value);
+      setStatusFilter("ALL");
+    }
+  }, []);
+
+  const emailData = emailsResponse?.data || [];
+  // const pagination = emailsResponse?.pagination;
+
+  const filteredEmails = emailData.filter((email: Email) => {
+    if (!email?.influencer) return false;
+
     const matchesSearch =
       search === "" ||
-      email.influencer?.name.toLowerCase().includes(search.toLowerCase()) ||
-      email.subject.toLowerCase().includes(search.toLowerCase()) ||
-      (email.template?.name &&
-        email.template.name.toLowerCase().includes(search.toLowerCase()));
+      email.influencer.name?.toLowerCase().includes(search.toLowerCase()) ||
+      email.subject?.toLowerCase().includes(search.toLowerCase()) ||
+      email.template?.name?.toLowerCase().includes(search.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "ALL" || email.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "-";
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch {
+      return "-";
+    }
   };
+
+  const getStatusBadge = (status: EmailStatus) => {
+    const colorClass = statusColors[status] || "bg-gray-100 text-gray-800";
+    return <Badge className={colorClass}>{status}</Badge>;
+  };
+
+  if (isError) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>Failed to load emails. Please try again.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                className="ml-4"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -78,7 +148,6 @@ export default function EmailsPage() {
           </div>
         </div>
 
-        {/* Filters */}
         <Card className="p-4">
           <div className="flex gap-4">
             <div className="flex-1 relative">
@@ -90,30 +159,26 @@ export default function EmailsPage() {
                 className="pl-10"
               />
             </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value) =>
-                setStatusFilter(value as EmailStatus | "ALL")
-              }
-            >
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="QUEUED">Queued</SelectItem>
-                <SelectItem value="PROCESSING">Processing</SelectItem>
-                <SelectItem value="SENT">Sent</SelectItem>
-                <SelectItem value="FAILED">Failed</SelectItem>
-                <SelectItem value="OPENED">Opened</SelectItem>
-                <SelectItem value="REPLIED">Replied</SelectItem>
+                <SelectItem value={EmailStatus.PENDING}>Pending</SelectItem>
+                <SelectItem value={EmailStatus.QUEUED}>Queued</SelectItem>
+                <SelectItem value={EmailStatus.PROCESSING}>
+                  Processing
+                </SelectItem>
+                <SelectItem value={EmailStatus.SENT}>Sent</SelectItem>
+                <SelectItem value={EmailStatus.FAILED}>Failed</SelectItem>
+                <SelectItem value={EmailStatus.OPENED}>Opened</SelectItem>
+                <SelectItem value={EmailStatus.REPLIED}>Replied</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </Card>
 
-        {/* Emails Table */}
         <Card>
           <Table>
             <TableHeader>
@@ -131,42 +196,32 @@ export default function EmailsPage() {
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
-                    Loading...
+                    Loading emails...
                   </TableCell>
                 </TableRow>
-              ) : filteredEmails?.length === 0 ? (
+              ) : filteredEmails.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={7}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No emails found
+                    {search ? "No emails match your search" : "No emails found"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredEmails?.map((email: Email) => (
+                filteredEmails.map((email: Email) => (
                   <TableRow key={email.id}>
                     <TableCell className="font-medium">
-                      {email.influencer?.name}
+                      {email.influencer?.name || "Unknown"}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {email.subject}
+                      {email.subject || "No subject"}
                     </TableCell>
                     <TableCell>{email.template?.name || "Custom"}</TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[email.status]}>
-                        {email.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {email.sentAt ? formatDate(email.sentAt) : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {email.openedAt ? formatDate(email.openedAt) : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {email.repliedAt ? formatDate(email.repliedAt) : "-"}
-                    </TableCell>
+                    <TableCell>{getStatusBadge(email.status)}</TableCell>
+                    <TableCell>{formatDate(email.sentAt)}</TableCell>
+                    <TableCell>{formatDate(email.openedAt)}</TableCell>
+                    <TableCell>{formatDate(email.repliedAt)}</TableCell>
                   </TableRow>
                 ))
               )}

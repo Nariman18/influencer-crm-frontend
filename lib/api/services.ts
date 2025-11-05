@@ -3,17 +3,16 @@ import {
   BulkOperationResult,
   Campaign,
   Contract,
-  ContractStatus,
   DashboardStats,
   Email,
   EmailTemplate,
   ImportInfluencerData,
   Influencer,
-  InfluencerStatus,
   PaginatedResponse,
   User,
 } from "@/types";
 import apiClient from "./client";
+import { ContractStatus, EmailStatus, InfluencerStatus } from "../shared-types";
 
 // Auth API
 export const authApi = {
@@ -65,7 +64,7 @@ export const influencerApi = {
     limit?: number;
     status?: InfluencerStatus;
     search?: string;
-    emailFilter?: string; // CHANGED from hasEmail to emailFilter
+    emailFilter?: string;
   }) =>
     apiClient.get<PaginatedResponse<Influencer>>("/influencers", { params }),
 
@@ -178,8 +177,12 @@ export const emailTemplateApi = {
 
 // Email API
 export const emailApi = {
-  getAll: (params?: { page?: number; limit?: number; influencerId?: string }) =>
-    apiClient.get<PaginatedResponse<Email>>("/emails", { params }),
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    influencerId?: string;
+    status?: EmailStatus;
+  }) => apiClient.get<PaginatedResponse<Email>>("/emails", { params }),
 
   validateConfig: () =>
     apiClient.get<{

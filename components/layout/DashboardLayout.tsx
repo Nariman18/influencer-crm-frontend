@@ -1,10 +1,10 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
-import { logout, loadFromStorage } from "@/lib/store/slices/authSlice";
+import { logout, initialize } from "@/lib/store/slices/authSlice";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -34,30 +34,15 @@ const navigation = [
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, user, isInitialized } = useAppSelector(
+    (state) => state.auth
+  );
 
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Single effect to handle initialization and redirection
+  // Single effect to handle initialization
   useEffect(() => {
-    const initializeAuth = async () => {
-      await dispatch(loadFromStorage());
-
-      // Use setTimeout to avoid synchronous state update in effect
-      setTimeout(() => {
-        setIsInitialized(true);
-      }, 0);
-    };
-
-    initializeAuth();
+    // Initialize auth state from storage
+    dispatch(initialize());
   }, [dispatch]);
-
-  // Handle redirection after initialization
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      router.push("/auth/login");
-    }
-  }, [isAuthenticated, isInitialized, router]);
 
   const handleLogout = () => {
     dispatch(logout());

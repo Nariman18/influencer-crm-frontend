@@ -1,79 +1,100 @@
-// lib/store/slices/authSlice.ts
-import { User } from "@/types";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { User } from "@/types";
 
 interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  isInitialized: boolean; // Add this flag
+  isInitialized: boolean;
 }
 
-// Don't access localStorage in initial state - let it be handled on client side only
+// Safe storage utility with error handling
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      if (typeof window === "undefined") return null;
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.warn(`Failed to get ${key} from storage:`, error);
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.warn(`Failed to set ${key} in storage:`, error);
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn(`Failed to remove ${key} from storage:`, error);
+    }
+  },
+};
+
 const initialState: AuthState = {
   user: null,
   token: null,
   isAuthenticated: false,
-  isInitialized: false, // Start as false
+  isInitialized: false,
 };
 
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    initialize: (state) => {
+      try {
+        const token = safeStorage.getItem("token");
+        const userStr = safeStorage.getItem("user");
+
+        if (token && userStr) {
+          state.token = token;
+          state.user = JSON.parse(userStr);
+          state.isAuthenticated = true;
+        }
+      } catch (error) {
+        console.error("Error initializing auth state:", error);
+        // Clear corrupted data
+        safeStorage.removeItem("token");
+        safeStorage.removeItem("user");
+      }
+      state.isInitialized = true;
+    },
     setCredentials: (
       state,
       action: PayloadAction<{ user: User; token: string }>
     ) => {
-      state.user = action.payload.user;
-      state.token = action.payload.token;
+      const { user, token } = action.payload;
+      state.user = user;
+      state.token = token;
       state.isAuthenticated = true;
-      state.isInitialized = true;
 
-      // Save to localStorage (browser only)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("token", action.payload.token);
-        localStorage.setItem("user", JSON.stringify(action.payload.user));
-      }
+      safeStorage.setItem("token", token);
+      safeStorage.setItem("user", JSON.stringify(user));
     },
     logout: (state) => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
-      state.isInitialized = true;
 
-      // Clear localStorage (browser only)
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
+      safeStorage.removeItem("token");
+      safeStorage.removeItem("user");
     },
-    loadFromStorage: (state) => {
-      if (typeof window !== "undefined") {
-        try {
-          const token = localStorage.getItem("token");
-          const userStr = localStorage.getItem("user");
-
-          if (token && userStr) {
-            state.token = token;
-            state.user = JSON.parse(userStr);
-            state.isAuthenticated = true;
-          }
-        } catch (error) {
-          console.error("Error loading auth from storage:", error);
-          // Clear corrupted data
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-        }
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+        safeStorage.setItem("user", JSON.stringify(state.user));
       }
-      state.isInitialized = true;
-    },
-    setInitialized: (state) => {
-      state.isInitialized = true;
     },
   },
 });
 
-export const { setCredentials, logout, loadFromStorage, setInitialized } =
+export const { initialize, setCredentials, logout, updateUser } =
   authSlice.actions;
 export default authSlice.reducer;

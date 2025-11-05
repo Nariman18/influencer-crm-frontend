@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Influencer, InfluencerStatus } from "@/types";
+import { Influencer } from "@/types";
 import { toast } from "sonner";
 import {
   Plus,
@@ -46,6 +46,7 @@ import {
 import { useInfluencers } from "@/lib/hooks/useInfluencers";
 import { useDispatch } from "react-redux";
 import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
+import { InfluencerStatus } from "@/lib/shared-types";
 
 const statusColors: Record<InfluencerStatus, string> = {
   PING_1: "bg-blue-100 text-blue-800",

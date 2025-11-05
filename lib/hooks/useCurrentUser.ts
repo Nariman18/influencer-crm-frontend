@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { RootState } from "@/lib/store";
 import { authApi } from "@/lib/api/services";
 import { setCredentials, logout } from "@/lib/store/slices/authSlice";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { ApiError } from "@/types";
 
 export const useCurrentUser = () => {
   const dispatch = useDispatch();
@@ -11,40 +12,70 @@ export const useCurrentUser = () => {
     (state: RootState) => state.auth
   );
 
-  // Use Tanstack Query to fetch and sync user profile
-  const { data: userProfile, isLoading } = useQuery({
-    queryKey: ["currentUser"],
+  const {
+    data: userProfile,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["currentUser", token],
     queryFn: async () => {
+      if (!token) {
+        throw new Error("No token available");
+      }
+
       try {
         const response = await authApi.getProfile();
         return response.data;
-      } catch (error) {
-        // If profile fetch fails, logout user
-        dispatch(logout());
+      } catch (error: unknown) {
+        // Only logout on 401 errors
+        const apiError = error as ApiError;
+        if (apiError?.response?.status === 401) {
+          dispatch(logout());
+        }
         throw error;
       }
     },
-    enabled: isAuthenticated && !!token,
+    enabled: isAuthenticated && !!token && isInitialized,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: false,
+    retry: (failureCount, error: unknown) => {
+      // Don't retry on 401 errors
+      const apiError = error as ApiError;
+      if (apiError?.response?.status === 401) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 
-  // Sync the user profile with Redux when it changes
+  // Sync user profile with Redux
   useEffect(() => {
     if (userProfile && user?.id !== userProfile.id) {
-      // Update Redux store with fresh user data
       dispatch(
         setCredentials({
           user: userProfile,
-          token: token!, // token exists because we're authenticated
+          token: token!,
         })
       );
     }
   }, [userProfile, user, token, dispatch]);
 
-  return {
-    user: userProfile || user,
-    isLoading: isLoading || !isInitialized,
-    isAuthenticated,
-  };
+  return useMemo(
+    () => ({
+      user: userProfile || user,
+      isLoading: isLoading || !isInitialized,
+      isAuthenticated: isAuthenticated && !!userProfile,
+      error,
+      refetch,
+    }),
+    [
+      userProfile,
+      user,
+      isLoading,
+      isInitialized,
+      isAuthenticated,
+      error,
+      refetch,
+    ]
+  );
 };

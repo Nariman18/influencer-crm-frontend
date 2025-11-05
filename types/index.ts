@@ -1,36 +1,9 @@
-export enum UserRole {
-  ADMIN = "ADMIN",
-  MANAGER = "MANAGER",
-  MEMBER = "MEMBER",
-}
-
-export enum InfluencerStatus {
-  PING_1 = "PING_1",
-  PING_2 = "PING_2",
-  PING_3 = "PING_3",
-  CONTRACT = "CONTRACT",
-  REJECTED = "REJECTED",
-  COMPLETED = "COMPLETED",
-}
-
-export enum ContractStatus {
-  DRAFT = "DRAFT",
-  SENT = "SENT",
-  SIGNED = "SIGNED",
-  ACTIVE = "ACTIVE",
-  COMPLETED = "COMPLETED",
-  CANCELLED = "CANCELLED",
-}
-
-export enum EmailStatus {
-  PENDING = "PENDING",
-  QUEUED = "QUEUED",
-  PROCESSING = "PROCESSING",
-  SENT = "SENT",
-  FAILED = "FAILED",
-  OPENED = "OPENED",
-  REPLIED = "REPLIED",
-}
+import {
+  ContractStatus,
+  EmailStatus,
+  InfluencerStatus,
+  UserRole,
+} from "@/lib/shared-types";
 
 export interface User {
   id: string;

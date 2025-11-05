@@ -1,93 +1,68 @@
-import axios, {
-  AxiosInstance,
-  AxiosError,
-  InternalAxiosRequestConfig,
-} from "axios";
+import axios from "axios";
+import { store } from "@/lib/store";
+import { logout } from "@/lib/store/slices/authSlice";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// Safe token retrieval
+const getToken = (): string | null => {
+  try {
+    if (typeof window === "undefined") return null;
 
-// Create a public client for endpoints that don't require authentication
-export const publicApiClient: AxiosInstance = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true,
-});
-
-// Create an authenticated client for endpoints that require authentication
-export const apiClient: AxiosInstance = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true,
-});
-
-// Request interceptor to add auth token only for authenticated client
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem("token");
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Try Redux store first
+    const state = store.getState();
+    if (state.auth.token) {
+      return state.auth.token;
     }
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
-);
 
-// Response interceptor for error handling (for authenticated client only)
-// lib/api/client.ts - Update the interceptor
+    // Fallback to localStorage
+    return localStorage.getItem("token");
+  } catch (error) {
+    console.warn("Error getting token:", error);
+    return null;
+  }
+};
+
+const apiClient = axios.create({
+  baseURL:
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://influencer-crm-backend.onrender.com/api",
+  timeout: 30000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Request interceptor with safe token handling
 apiClient.interceptors.request.use(
   (config) => {
-    // Safely get token from localStorage (only in browser)
-    let token = null;
-    if (typeof window !== "undefined") {
-      // Try the specific key 'token' first since we know it exists
-      token = localStorage.getItem("token");
-
-      if (token) {
-        console.log("✅ Found token in localStorage.token");
-      } else {
-        // Fallback to other keys
-        token =
-          localStorage.getItem("accessToken") ||
-          localStorage.getItem("authToken") ||
-          null;
-        if (token) {
-          console.log("✅ Found token in fallback location");
-        } else {
-          console.log("❌ No token found in any location");
-        }
-      }
-
-      console.log("🔐 Token details:", {
-        length: token?.length,
-        first10: token?.substring(0, 10) + "...",
-        last10: token ? "..." + token.substring(token.length - 10) : "none",
-      });
-    }
+    const token = getToken();
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log("✅ Token added to Authorization header");
     } else {
-      console.log("❌ No token available for request");
+      console.warn("No token available for request to:", config.url);
     }
-
-    console.log("🔐 Final request configuration:", {
-      url: config.url,
-      method: config.method,
-      hasAuthHeader: !!config.headers.Authorization,
-      params: config.params,
-    });
 
     return config;
   },
   (error) => {
-    console.log("❌ Request interceptor error:", error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor with proper error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.warn("Authentication failed, logging out...");
+      store.dispatch(logout());
+
+      // Redirect to login if we're in browser
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth/login";
+      }
+    }
+
     return Promise.reject(error);
   }
 );
