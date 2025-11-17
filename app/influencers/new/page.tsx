@@ -42,7 +42,7 @@ export default function NewInfluencerPage() {
     instagramHandle: "",
     followers: "",
     country: "",
-    status: InfluencerStatus.PING_1,
+    status: InfluencerStatus.NOT_SENT,
     notes: "",
   });
   const [duplicateDialog, setDuplicateDialog] = useState<DuplicateDialogState>({
@@ -335,6 +335,9 @@ export default function NewInfluencerPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={InfluencerStatus.NOT_SENT}>
+                          Not Sent
+                        </SelectItem>
                         <SelectItem value={InfluencerStatus.PING_1}>
                           Ping 1
                         </SelectItem>

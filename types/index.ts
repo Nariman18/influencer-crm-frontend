@@ -51,6 +51,11 @@ export interface Influencer {
   status: InfluencerStatus;
   notes?: string;
   lastContactDate?: string;
+
+  // Enhanced automation fields
+  automationStatus?: string;
+  nextAutomationAt?: string;
+
   createdAt: string;
   updatedAt: string;
   contracts?: Contract[];
@@ -175,6 +180,8 @@ export interface Email {
   openedAt?: string;
   repliedAt?: string;
   errorMessage?: string;
+  isAutomation?: boolean;
+  automationStepId?: string;
   createdAt: string;
   updatedAt: string;
   influencer?: Influencer;
@@ -268,12 +275,16 @@ export interface SendEmailData {
   subject?: string;
   body?: string;
   variables?: Record<string, string>;
+  provider?: "gmail" | "mailgun";
 }
 
 export interface BulkSendEmailData {
   influencerIds: string[];
   templateId: string;
   variables?: Record<string, string>;
+  startAutomation?: boolean;
+  automationTemplates?: string[];
+  provider?: "gmail" | "mailgun";
 }
 
 export interface DuplicateInfluencer {

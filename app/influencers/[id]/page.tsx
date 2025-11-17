@@ -33,6 +33,7 @@ import { formatNumber } from "@/lib/utils";
 import { ContractStatus, InfluencerStatus } from "@/lib/shared-types";
 
 const statusColors: Record<InfluencerStatus, string> = {
+  NOT_SENT: "bg-gray-100 text-gray-800",
   PING_1: "bg-blue-100 text-blue-800",
   PING_2: "bg-yellow-100 text-yellow-800",
   PING_3: "bg-orange-100 text-orange-800",

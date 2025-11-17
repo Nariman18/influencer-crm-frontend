@@ -1,4 +1,6 @@
+// frontend/lib/api/services.ts
 import {
+  ApiError,
   AuthResponse,
   BulkOperationResult,
   Campaign,
@@ -14,7 +16,97 @@ import {
 import apiClient from "./client";
 import { ContractStatus, EmailStatus, InfluencerStatus } from "../shared-types";
 
-// Auth API
+type QueueCounts = {
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+  delayed: number;
+
+  [key: string]: number;
+};
+
+type QueueMeta = {
+  emailName?: string;
+  automationName?: string;
+  prefix?: string | undefined;
+};
+
+export type QueueStatsResponse = {
+  connection: boolean;
+  email: QueueCounts;
+  automation: QueueCounts;
+  meta?: QueueMeta;
+};
+
+export type QueueHealthResponse = {
+  healthy: boolean;
+  connection: string;
+  timestamp: string;
+  queues: {
+    email: {
+      status: string;
+      totalJobs: number;
+      pending: number;
+      breakdown: QueueCounts;
+    };
+    automation: {
+      status: string;
+      totalJobs: number;
+      pending: number;
+      breakdown: QueueCounts;
+    };
+  };
+};
+
+type QueuePerformance = {
+  emailQueue: {
+    throughput: string;
+    failureRate: string;
+    backlog: number;
+    efficiency: string;
+    activeWorkers: number;
+  };
+  automationQueue: {
+    throughput: string;
+    failureRate: string;
+    backlog: number;
+    efficiency: string;
+    activeWorkers: number;
+  };
+};
+
+type QueueMetricsData = {
+  performance: QueuePerformance;
+  recommendations: {
+    email: string;
+    automation: string;
+  };
+  timestamp: string;
+};
+
+type QueueConfigData = {
+  environment: string;
+  redis: {
+    urlConfigured: boolean;
+  };
+  limits: {
+    dailyEmails: number;
+    emailConcurrency: number;
+    automationConcurrency: number;
+    emailsPerMinute: number;
+  };
+  delays: {
+    betweenEmails: string;
+    automation: string;
+  };
+  providers: {
+    mailgun: { configured: boolean; domain: string | null };
+    gmail: { note: string };
+  };
+};
+
+/** Auth API */
 export const authApi = {
   register: (data: {
     email: string;
@@ -31,7 +123,7 @@ export const authApi = {
   updateProfile: (data: { name: string; email: string }) =>
     apiClient.put<User>("/auth/profile", data),
 
-  // Public endpoint. No authentication required
+  // Exchange OAuth code (public)
   exchangeToken: (code: string) =>
     apiClient.post<{
       accessToken: string;
@@ -40,7 +132,7 @@ export const authApi = {
       expiresIn?: number;
     }>("/auth/google/exchange-token", { code }),
 
-  // Requires authentication
+  // OAuth connect/disconnect (requires auth)
   connectGoogle: (data: {
     accessToken: string;
     refreshToken: string;
@@ -57,7 +149,7 @@ export const authApi = {
     ),
 };
 
-// Influencer API
+/** Influencer API */
 export const influencerApi = {
   getAll: (params?: {
     page?: number;
@@ -84,6 +176,9 @@ export const influencerApi = {
       { ids }
     ),
 
+  stopAutomation: (id: string) =>
+    apiClient.post(`/influencers/${id}/automation/cancel`),
+
   bulkUpdateStatus: (ids: string[], status: InfluencerStatus) =>
     apiClient.post<{ message: string; count: number }>(
       "/influencers/bulk/update-status",
@@ -91,7 +186,10 @@ export const influencerApi = {
     ),
 
   import: (influencers: ImportInfluencerData[]) =>
-    apiClient.post<BulkOperationResult>("/influencers/import", { influencers }),
+    apiClient.post<{ success: number; failed: number; errors?: ApiError[] }>(
+      "/influencers/import",
+      { influencers }
+    ),
 
   checkDuplicates: (data: {
     email?: string;
@@ -110,7 +208,7 @@ export const influencerApi = {
     }>("/influencers/check-duplicates", data),
 };
 
-// Contract API
+/** Contract API */
 export const contractApi = {
   getAll: (params?: {
     page?: number;
@@ -136,7 +234,7 @@ export const contractApi = {
     ),
 };
 
-// Campaign API
+/** Campaign API */
 export const campaignApi = {
   getAll: (params?: { page?: number; limit?: number; isActive?: boolean }) =>
     apiClient.get<PaginatedResponse<Campaign>>("/campaigns", { params }),
@@ -158,8 +256,9 @@ export const campaignApi = {
     apiClient.delete(`/campaigns/${id}/influencers/${influencerId}`),
 };
 
-// Email Template API
+/** Email Template API */
 export const emailTemplateApi = {
+  // keep path consistent with server routes (adjust if server mounts differently)
   getAll: (params?: { isActive?: boolean }) =>
     apiClient.get<EmailTemplate[]>("/email-templates", { params }),
 
@@ -175,7 +274,7 @@ export const emailTemplateApi = {
   delete: (id: string) => apiClient.delete(`/email-templates/${id}`),
 };
 
-// Email API
+/** Email API */
 export const emailApi = {
   getAll: (params?: {
     page?: number;
@@ -199,21 +298,37 @@ export const emailApi = {
     subject?: string;
     body?: string;
     variables?: Record<string, string>;
+    provider?: "gmail" | "mailgun";
   }) => apiClient.post<Email>("/emails/send", data),
 
   bulkSend: (data: {
     influencerIds: string[];
     templateId: string;
     variables?: Record<string, string>;
+    startAutomation?: boolean;
+    automationTemplates?: string[];
+    provider?: "gmail" | "mailgun";
   }) => apiClient.post<BulkOperationResult>("/emails/bulk-send", data),
 };
-// QUEUE API
+
+/** Queue API */
 export const queueApi = {
-  getStats: () => apiClient.get("/queue/stats"),
-  getHealth: () => apiClient.get("/queue/health"),
+  health: () => apiClient.get<QueueHealthResponse>("/queue/health"),
+
+  stats: () => apiClient.get<QueueStatsResponse>("/queue/stats"),
+
+  metrics: () =>
+    apiClient.get<{ success: boolean; data: QueueMetricsData }>(
+      "/queue/metrics"
+    ),
+
+  config: () =>
+    apiClient.get<{ success: boolean; data: QueueConfigData }>("/queue/config"),
+
+  cleanup: () => apiClient.post("/queue/cleanup"),
 };
 
-// Dashboard API
+/** Dashboard API */
 export const dashboardApi = {
   getStats: () => apiClient.get<DashboardStats>("/dashboard/stats"),
 

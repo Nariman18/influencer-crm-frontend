@@ -6,6 +6,7 @@ export enum UserRole {
 }
 
 export enum InfluencerStatus {
+  NOT_SENT = "NOT_SENT",
   PING_1 = "PING_1",
   PING_2 = "PING_2",
   PING_3 = "PING_3",

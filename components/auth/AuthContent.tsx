@@ -51,7 +51,7 @@ export default function AuthCallbackContent() {
     const processOAuthCallback = async () => {
       // Prevent double processing
       if (isProcessing || hasProcessed) {
-        console.log("⏭Already processing or processed, skipping...");
+        console.log("Already processing or processed, skipping...");
         return;
       }
 

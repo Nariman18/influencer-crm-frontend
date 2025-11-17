@@ -8,7 +8,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // Initialize auth state from storage
     dispatch(initialize());
   }, [dispatch]);
 

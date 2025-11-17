@@ -60,16 +60,15 @@ export default function EmailsPage() {
     queryKey: ["emails", statusFilter],
     queryFn: async () => {
       const params: EmailQueryParams = {};
-
       if (statusFilter !== "ALL" && isValidEmailStatus(statusFilter)) {
         params.status = statusFilter;
       }
-
       const response = await emailApi.getAll(params);
       return response.data;
     },
     retry: 1,
-    staleTime: 30000,
+    staleTime: 15000,
+    refetchInterval: 10000,
   });
 
   const handleStatusChange = useCallback((value: string) => {

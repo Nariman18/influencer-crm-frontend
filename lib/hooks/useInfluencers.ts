@@ -54,11 +54,10 @@ export const useInfluencers = () => {
     },
   });
 
-  // **SIMPLIFIED: Use API data directly without complex Redux sync**
+  // Use API data directly without complex Redux sync**
   const { data, isLoading, error } = useQuery({
     queryKey: ["influencers", filters],
     queryFn: async () => {
-      // Only fetch if authenticated
       if (!isAuthenticated || !currentUser) {
         return { data: [], pagination: { page: 1, totalPages: 0, total: 0 } };
       }
@@ -150,11 +149,10 @@ export const useInfluencers = () => {
     },
   });
 
-  // **USE API DATA DIRECTLY - This is the key fix**
   const apiData = data as PaginatedResponse<Influencer> | undefined;
 
   return {
-    // **CRITICAL: Use API data directly for real-time updates**
+    // Use API data directly for real-time updates**
     influencers: apiData?.data || [],
     pagination: apiData?.pagination || {
       page: 1,

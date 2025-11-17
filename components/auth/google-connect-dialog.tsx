@@ -72,8 +72,6 @@ export function GoogleConnectDialog({
     const redirectUri = `${window.location.origin}/auth/callback`;
     // No need for replace - it breaks the protocol. If you want to clean extra path slashes, use a more targeted regex like replace(/\/+/g, '/') on the path only
     const scope = [
-      "https://www.googleapis.com/auth/gmail.send",
-      "https://www.googleapis.com/auth/gmail.compose",
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile",

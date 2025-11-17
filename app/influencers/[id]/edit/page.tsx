@@ -390,6 +390,9 @@ export default function EditInfluencerPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={InfluencerStatus.NOT_SENT}>
+                          Not Sent
+                        </SelectItem>
                         <SelectItem value={InfluencerStatus.PING_1}>
                           Ping 1
                         </SelectItem>

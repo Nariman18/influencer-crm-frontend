@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AxiosResponse } from "axios";
 import {
   Dialog,
   DialogContent,
@@ -18,12 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { emailApi, emailTemplateApi } from "@/lib/api/services";
-import { ApiError, EmailTemplate, Influencer } from "@/types";
+import {
+  ApiError,
+  EmailTemplate,
+  Influencer,
+  BulkOperationResult,
+} from "@/types";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { X, Mail, Loader2 } from "lucide-react";
+import { X, Mail, Loader2, ChevronsUpDown } from "lucide-react";
 
 interface BulkSendEmailDialogProps {
   open: boolean;
@@ -32,6 +39,15 @@ interface BulkSendEmailDialogProps {
   onSelectionClear: () => void;
 }
 
+type BulkSendPayload = {
+  influencerIds: string[];
+  templateId: string;
+  variables?: Record<string, string>;
+  startAutomation?: boolean;
+  automationTemplates?: string[];
+  provider?: "gmail" | "mailgun";
+};
+
 export function BulkSendEmailDialog({
   open,
   onOpenChange,
@@ -39,45 +55,75 @@ export function BulkSendEmailDialog({
   onSelectionClear,
 }: BulkSendEmailDialogProps) {
   const queryClient = useQueryClient();
+
   const [formData, setFormData] = useState({
     templateId: "",
     subject: "",
     body: "",
   });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [startAutomation, setStartAutomation] = useState(false);
 
-  const { data: templates, isLoading: templatesLoading } = useQuery({
+  /**
+   * automationTemplates is an ARRAY of template **names** in the order the user selected them.
+   * We keep names here because the backend / API expects an array of template names for sequencing.
+   */
+  const [automationTemplates, setAutomationTemplates] = useState<string[]>([]);
+
+  // Fetch templates
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+    isError: templatesError,
+  } = useQuery<EmailTemplate[], Error>({
     queryKey: ["email-templates"],
     queryFn: async () => {
-      const response = await emailTemplateApi.getAll();
-      return response.data;
+      const resp = await emailTemplateApi.getAll();
+      return resp.data;
     },
   });
 
-  const bulkSendMutation = useMutation({
-    mutationFn: (data: {
-      influencerIds: string[];
-      templateId: string;
-      variables?: Record<string, string>;
-    }) => emailApi.bulkSend(data),
+  // Quick lookup maps
+  const templatesById = useMemo(() => {
+    const m = new Map<string, EmailTemplate>();
+    templates?.forEach((t) => m.set(t.id, t));
+    return m;
+  }, [templates]);
+
+  const templatesByName = useMemo(() => {
+    const m = new Map<string, EmailTemplate>();
+    templates?.forEach((t) => m.set(t.name, t));
+    return m;
+  }, [templates]);
+
+  const bulkSendMutation = useMutation<
+    AxiosResponse<BulkOperationResult>,
+    ApiError,
+    BulkSendPayload
+  >({
+    mutationFn: (data: BulkSendPayload) => emailApi.bulkSend(data),
     onSuccess: (result) => {
-      // NON-BLOCKING cache updates
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["influencers"] });
         queryClient.invalidateQueries({ queryKey: ["emails"] });
       }, 0);
 
+      const successCount = result.data?.success ?? 0;
+      const failedCount = result.data?.failed ?? 0;
+
       toast.success(
-        `✅ Queued ${result.data.success} emails for sending${
-          result.data.failed > 0 ? `, ${result.data.failed} failed` : ""
+        `✅ Queued ${successCount} emails for sending${
+          failedCount > 0 ? `, ${failedCount} failed` : ""
         }`
       );
 
-      // Reset and close
+      // Reset form + close
       setIsProcessing(false);
       onOpenChange(false);
       onSelectionClear();
       setFormData({ templateId: "", subject: "", body: "" });
+      setStartAutomation(false);
+      setAutomationTemplates([]);
     },
     onError: (error: ApiError) => {
       setIsProcessing(false);
@@ -88,14 +134,44 @@ export function BulkSendEmailDialog({
   });
 
   const handleTemplateChange = (templateId: string) => {
-    const template = templates?.find((t: EmailTemplate) => t.id === templateId);
+    const template = templatesById.get(templateId);
     if (template) {
       setFormData({
         templateId,
         subject: template.subject,
         body: template.body,
       });
+    } else {
+      // clear primary template fields if id blank
+      setFormData((prev) => ({ ...prev, templateId }));
     }
+
+    // Reset automation selection when primary changes — avoids accidental duplicates
+    setAutomationTemplates((prev) =>
+      prev.filter((n) => !!templatesByName.get(n))
+    );
+  };
+
+  /**
+   * Toggle a template in the ordered automationTemplates list.
+   * If not present -> append to the end (this determines sequence).
+   * If present -> remove it.
+   */
+  const toggleAutomationTemplateByName = (name: string) => {
+    setAutomationTemplates((prev) => {
+      if (prev.includes(name)) {
+        return prev.filter((p) => p !== name);
+      }
+      // append at end to represent sequence order
+      return [...prev, name];
+    });
+  };
+
+  /**
+   * Remove by index (useful for "remove" action on preview badges).
+   */
+  const removeAutomationAtIndex = (index: number) => {
+    setAutomationTemplates((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,9 +196,8 @@ export function BulkSendEmailDialog({
       return;
     }
 
-    // Set processing state but DON'T block UI
     setIsProcessing(true);
-    toast.info(`📨 Queueing ${influencerIds.length} emails...`);
+    toast.info(`Sending ${influencerIds.length} emails...`);
 
     try {
       await bulkSendMutation.mutateAsync({
@@ -133,19 +208,23 @@ export function BulkSendEmailDialog({
           email: "{{email}}",
           instagramHandle: "{{instagramHandle}}",
         },
+        startAutomation,
+        automationTemplates: startAutomation ? automationTemplates : [],
       });
-    } catch (error) {
-      // Error is already handled in mutation
-      console.error("Bulk send error:", error);
+    } catch (err) {
+      // mutateAsync rejection will be handled by onError; ensure local state
+      console.error("Bulk send error:", err);
+      setIsProcessing(false);
     }
   };
 
   const handleClose = () => {
-    // Simple one-click close - no confirmation needed
     setIsProcessing(false);
     onOpenChange(false);
     onSelectionClear();
     setFormData({ templateId: "", subject: "", body: "" });
+    setStartAutomation(false);
+    setAutomationTemplates([]);
   };
 
   const influencersWithEmail = selectedInfluencers.filter(
@@ -156,157 +235,290 @@ export function BulkSendEmailDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(val) => val === false && handleClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Bulk Send Email
-            {isProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
-          </DialogTitle>
-          <DialogDescription>
-            Send the same email to {selectedInfluencers.length} selected
-            influencers
-            {isProcessing && " - Processing in background..."}
-          </DialogDescription>
+          <div className="flex items-center justify-between w-full">
+            <div>
+              <DialogTitle className="flex items-center gap-3">
+                <Mail className="h-5 w-5" />
+                <span>Bulk Send Email</span>
+                {isProcessing && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </DialogTitle>
+            </div>
+
+            <div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  handleClose();
+                }}
+                disabled={isProcessing}
+                className="flex items-center gap-2"
+              >
+                <X className="h-4 w-4" />
+                Close
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4">
-          {/* Selected Influencers */}
-          <div className="space-y-2">
+        <div className="flex-1 overflow-y-auto space-y-6 p-4">
+          {/* Selected influencers summary */}
+          <section className="space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">Selected Influencers</h4>
+              <h4 className="text-sm font-medium">Selected influencers</h4>
               <Button
-                type="button"
-                variant="outline"
                 size="sm"
+                variant="outline"
                 onClick={onSelectionClear}
                 disabled={isProcessing}
               >
-                <X className="h-4 w-4 mr-1" />
-                Clear All
+                Clear
               </Button>
             </div>
 
-            <div className="border rounded-lg p-3 max-h-32 overflow-y-auto">
+            <div className="border rounded-lg p-3 max-h-28 overflow-y-auto">
               <div className="flex flex-wrap gap-2">
-                {selectedInfluencers.map((influencer) => (
+                {selectedInfluencers.map((inf) => (
                   <Badge
-                    key={influencer.id}
-                    variant={influencer.email ? "default" : "secondary"}
-                    className={
-                      influencer.email
-                        ? "bg-primary"
-                        : "bg-gray-100 text-gray-600"
-                    }
+                    key={inf.id}
+                    variant={inf.email ? "default" : "secondary"}
+                    className={`px-2 py-1 text-sm ${
+                      inf.email ? "bg-primary" : "bg-slate-100 text-slate-700"
+                    }`}
                   >
-                    {influencer.name}
-                    {!influencer.email && " (no email)"}
+                    {inf.name}
+                    {!inf.email && " (no email)"}
                   </Badge>
                 ))}
               </div>
+              {influencersWithoutEmail.length > 0 && (
+                <p className="mt-2 text-xs text-amber-600">
+                  ⚠️ {influencersWithoutEmail.length} influencer(s) missing
+                  email — they&apos;ll be skipped.
+                </p>
+              )}
             </div>
+          </section>
 
-            {influencersWithoutEmail.length > 0 && (
-              <p className="text-sm text-amber-600">
-                ⚠️ {influencersWithoutEmail.length} influencer(s) don&apos;t
-                have email addresses and will be skipped
-              </p>
-            )}
-          </div>
-
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Email Template *</label>
+            {/* Template select */}
+            <div className="grid grid-cols-1 gap-2">
+              <Label className="text-sm">Email Template *</Label>
               <Select
                 value={formData.templateId}
                 onValueChange={handleTemplateChange}
                 disabled={isProcessing || templatesLoading}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue
                     placeholder={
                       templatesLoading
                         ? "Loading templates..."
-                        : "Select a template"
+                        : "Choose a template"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates?.map((template: EmailTemplate) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
+                  {templates && templates.length > 0 ? (
+                    templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="__none__" disabled>
+                      {templatesLoading ? "Loading..." : "No templates"}
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
 
-            <div>
-              <label className="text-sm font-medium">Subject *</label>
-              <textarea
+            {/* Subject */}
+            <div className="grid grid-cols-1 gap-2">
+              <Label className="text-sm">Subject *</Label>
+              <input
+                type="text"
                 value={formData.subject}
                 onChange={(e) =>
-                  setFormData({ ...formData, subject: e.target.value })
+                  setFormData((prev) => ({ ...prev, subject: e.target.value }))
                 }
                 placeholder="Email subject"
-                className="w-full px-3 py-2 border rounded-md text-sm resize-none outline-none focus:border-black disabled:opacity-50 disabled:cursor-not-allowed"
-                rows={2}
+                className="w-full px-3 py-2 rounded-md border text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                 required
                 disabled={isProcessing}
               />
             </div>
 
-            <div>
-              <label className="text-sm font-medium">Body *</label>
+            {/* Body */}
+            <div className="grid grid-cols-1 gap-2">
+              <Label className="text-sm">Body *</Label>
               <Textarea
                 value={formData.body}
-                className="focus:border-black disabled:opacity-50 disabled:cursor-not-allowed"
                 onChange={(e) =>
-                  setFormData({ ...formData, body: e.target.value })
+                  setFormData((prev) => ({ ...prev, body: e.target.value }))
                 }
-                placeholder="Email body"
-                rows={12}
+                placeholder="Email body — use {{name}}, {{email}}, {{instagramHandle}}"
+                rows={10}
                 required
                 disabled={isProcessing}
               />
             </div>
 
-            <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
-              <p className="font-medium mb-1">
-                Available Personalization Variables:
-              </p>
-              <p>
-                Use {"{{name}}"}, {"{{email}}"}, {"{{instagramHandle}}"} to
-                personalize each email
-              </p>
-              <p className="mt-1 text-xs">
-                Example: &quot;Hi {"{{name}}"}, we noticed your great content on
-                Instagram...&quot;
-              </p>
+            {/* Automation toggle + multi-select for follow-ups */}
+            <div className="grid grid-cols-1 gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={startAutomation}
+                    onCheckedChange={(val) => {
+                      const enabled = !!val;
+                      setStartAutomation(enabled);
+                      if (!enabled) setAutomationTemplates([]);
+                    }}
+                    disabled={isProcessing}
+                  />
+
+                  <div className="text-sm font-medium">Start automation</div>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  {startAutomation
+                    ? `${automationTemplates.length} follow-up templates selected`
+                    : "Automation off"}
+                </div>
+              </div>
+
+              {/* Multi-select dropdown for automation templates (compact) */}
+              {startAutomation && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Follow-up templates</Label>
+
+                  <Select
+                    value={automationTemplates.join("|")}
+                    onValueChange={(val) => {
+                      if (!val) return;
+                      toggleAutomationTemplateByName(val);
+                    }}
+                    disabled={isProcessing || templatesLoading}
+                  >
+                    <SelectTrigger className="w-full">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 truncate">
+                          <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                          <SelectValue placeholder="Select follow-up templates" />
+                        </div>
+                      </div>
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {templates && templates.length > 0 ? (
+                        templates.map((t) => (
+                          <SelectItem key={t.id} value={t.name}>
+                            <div className="flex items-center justify-between w-full">
+                              <div className="truncate">{t.name}</div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {t.subject}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="__none__" disabled>
+                          {templatesLoading ? "Loading..." : "No templates"}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Sequence preview: clear numbered badges that show the final sequence & allow removing */}
+                  <div>
+                    <Label className="text-sm">Selected sequence</Label>
+                    {automationTemplates.length === 0 ? (
+                      <div className="text-xs text-muted-foreground mt-1 text-yellow-600">
+                        No follow-up templates selected yet. Use the dropdown
+                        above to add templates to the sequence.
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {automationTemplates.map((name, idx) => (
+                          <div
+                            key={`${name}-${idx}`}
+                            className="inline-flex items-center gap-2 px-2 py-1 rounded-md border bg-muted/30"
+                          >
+                            <span className="text-xs px-1 py-0.5 rounded bg-primary text-white font-medium">
+                              {idx + 1}
+                            </span>
+                            <span className="text-sm">{name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeAutomationAtIndex(idx)}
+                              className="ml-2 text-xs text-red-600 hover:underline"
+                              aria-label={`Remove ${name} from sequence`}
+                              disabled={isProcessing}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      The order above is the sequence that will be sent after
+                      the primary email.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4 border-t">
+            {/* Personalization help */}
+            <div className="text-xs text-muted-foreground p-3 bg-muted rounded-md">
+              <div className="font-medium mb-1">Personalization variables</div>
+              <div>
+                Use{" "}
+                <code className="rounded px-1 py-0.5 bg-muted-foreground/5 border">
+                  {"{{name}}"}
+                </code>
+                ,{" "}
+                <code className="rounded px-1 py-0.5 bg-muted-foreground/5 border">
+                  {"{{email}}"}
+                </code>
+                ,{" "}
+                <code className="rounded px-1 py-0.5 bg-muted-foreground/5 border">
+                  {"{{instagramHandle}}"}
+                </code>{" "}
+                in subject & body.
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-4 border-t">
               <Button
-                type="button"
                 variant="outline"
-                onClick={handleClose}
+                onClick={() => handleClose()}
                 disabled={isProcessing}
               >
                 Cancel
               </Button>
+
               <Button
                 type="submit"
                 disabled={isProcessing || influencersWithEmail.length === 0}
-                className="min-w-32"
               >
                 {isProcessing ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Queueing...
+                    Sending...
                   </>
                 ) : (
-                  <>Queue {influencersWithEmail.length} Emails</>
+                  <>Send {influencersWithEmail.length} Emails</>
                 )}
               </Button>
             </div>
@@ -316,3 +528,5 @@ export function BulkSendEmailDialog({
     </Dialog>
   );
 }
+
+export default BulkSendEmailDialog;

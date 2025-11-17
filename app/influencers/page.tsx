@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Influencer } from "@/types";
+import { ApiError, Influencer } from "@/types";
 import { toast } from "sonner";
 import {
   Plus,
@@ -47,8 +47,10 @@ import { useInfluencers } from "@/lib/hooks/useInfluencers";
 import { useDispatch } from "react-redux";
 import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
 import { InfluencerStatus } from "@/lib/shared-types";
+import { influencerApi } from "@/lib/api/services";
 
 const statusColors: Record<InfluencerStatus, string> = {
+  NOT_SENT: "bg-gray-100 text-gray-800",
   PING_1: "bg-blue-100 text-blue-800",
   PING_2: "bg-yellow-100 text-yellow-800",
   PING_3: "bg-orange-100 text-orange-800",
@@ -70,8 +72,6 @@ export default function InfluencersPage() {
     bulkDeleteInfluencers,
     currentTotalCount,
   } = useInfluencers();
-
-  const [isNavigating, setIsNavigating] = useState(false);
 
   const [bulkEmailDialogOpen, setBulkEmailDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -357,6 +357,7 @@ export default function InfluencersPage() {
                 <TableHead>Followers</TableHead>
                 <TableHead>Manager</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Automation</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -464,6 +465,35 @@ export default function InfluencersPage() {
                       <Badge className={statusColors[influencer.status]}>
                         {influencer.status.replace("_", " ")}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {["PING_1", "PING_2", "PING_3"].includes(
+                        influencer.status
+                      ) ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-400 hover:bg-red-50"
+                          onClick={async () => {
+                            try {
+                              const resp = await influencerApi.stopAutomation(
+                                influencer.id
+                              );
+                              toast.success(
+                                resp.data?.message || "Automation stopped"
+                              );
+                              updateFilters({});
+                            } catch (err) {
+                              console.error(err);
+                              toast.error("Failed to stop automation");
+                            }
+                          }}
+                        >
+                          Stop
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end items-center space-x-4 opacity-0 group-hover:opacity-100 transition-opacity">
