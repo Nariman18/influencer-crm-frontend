@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,7 @@ import {
 import { useDuplicateCheck } from "@/lib/hooks/useDuplicateCheck";
 import { DuplicateDetectionDialog } from "@/components/influencers/duplicate-detection-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Save, AlertTriangle, User } from "lucide-react";
+import { ArrowLeft, Save, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import {
   DuplicateDialogState,
@@ -30,11 +29,11 @@ import {
 import { debounce } from "@/lib/utils";
 import { useInfluencers } from "@/lib/hooks/useInfluencers";
 import { InfluencerStatus } from "@/lib/shared-types";
+import { extractInstagramUsername } from "@/lib/instagram-utils";
 
 export default function NewInfluencerPage() {
   const router = useRouter();
-
-  const { createInfluencer, currentUser } = useInfluencers();
+  const { createInfluencer } = useInfluencers();
 
   const [formData, setFormData] = useState<InfluencerFormData>({
     name: "",
@@ -61,9 +60,7 @@ export default function NewInfluencerPage() {
 
   const duplicateCheck = useDuplicateCheck();
 
-  // Remove the local createMutation since we're using it from useInfluencers
-
-  // Debounced duplicate check and optimizations
+  // Debounced duplicate check
   const checkForDuplicates = debounce(
     async (email: string, instagramHandle: string) => {
       const hasValidEmail = email && email.length >= 5;
@@ -161,6 +158,22 @@ export default function NewInfluencerPage() {
     setDuplicateDialog({ open: false, duplicate: null, type: "both" });
   };
 
+  // Handle name input - extract Instagram username if URL is pasted
+  const handleNameInput = (value: string) => {
+    const extractedUsername = extractInstagramUsername(value);
+
+    if (extractedUsername) {
+      // If it's an Instagram URL, extract username and set as name
+      setFormData((prev) => ({
+        ...prev,
+        name: extractedUsername,
+      }));
+    } else {
+      // If it's not an Instagram URL, just set the name normally
+      setFormData((prev) => ({ ...prev, name: value }));
+    }
+  };
+
   const handleChange = (field: keyof InfluencerFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -173,7 +186,6 @@ export default function NewInfluencerPage() {
   };
 
   const submitForm = () => {
-    // Convert form data to API data (string to number conversion)
     const submitData: Partial<Influencer> = {
       name: formData.name,
       email: formData.email || undefined,
@@ -184,17 +196,12 @@ export default function NewInfluencerPage() {
       notes: formData.notes || undefined,
     };
 
-    console.log("🚀 Creating influencer with data:", submitData);
-    console.log("👤 Current user context:", currentUser);
-
     createInfluencer(submitData, {
       onSuccess: (data) => {
-        console.log("✅ Influencer created successfully:", data);
         toast.success("Influencer created successfully");
         router.push("/influencers");
       },
       onError: (error: ApiError) => {
-        console.error("❌ Failed to create influencer:", error);
         if (
           error.response?.data?.error?.includes("duplicate") ||
           error.response?.data?.duplicate
@@ -270,10 +277,13 @@ export default function NewInfluencerPage() {
                     <label className="text-sm font-medium">Name *</label>
                     <Input
                       value={formData.name}
-                      onChange={(e) => handleChange("name", e.target.value)}
-                      placeholder="Full name"
+                      onChange={(e) => handleNameInput(e.target.value)}
+                      placeholder="Full name or Instagram URL"
                       required
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Paste Instagram URL to auto-extract username as name
+                    </p>
                   </div>
 
                   <div>
@@ -302,25 +312,13 @@ export default function NewInfluencerPage() {
                     <label className="text-sm font-medium">
                       Instagram Handle
                     </label>
-                    <div className="relative">
-                      <Input
-                        value={formData.instagramHandle}
-                        onChange={(e) =>
-                          handleChange("instagramHandle", e.target.value)
-                        }
-                        placeholder="username"
-                        className={
-                          duplicateWarning?.includes("Instagram")
-                            ? "border-amber-300 pr-10"
-                            : ""
-                        }
-                      />
-                      {isCheckingDuplicates && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        </div>
-                      )}
-                    </div>
+                    <Input
+                      value={formData.instagramHandle}
+                      onChange={(e) =>
+                        handleChange("instagramHandle", e.target.value)
+                      }
+                      placeholder="username"
+                    />
                   </div>
 
                   <div>

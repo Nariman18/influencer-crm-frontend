@@ -340,3 +340,75 @@ export const dashboardApi = {
   getActivity: (params?: { limit?: number }) =>
     apiClient.get("/dashboard/activity", { params }),
 };
+
+// upload an influencer Excel file
+
+export const importApi = {
+  // Upload file (FormData). Returns { message?, jobId }
+  uploadFile: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+
+    const token = localStorage.getItem("token");
+    return apiClient.post("/import/influencers", fd, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
+  },
+
+  // Get import job status
+  getJob: (jobId: string) =>
+    apiClient.get<{
+      id: string;
+      managerId: string;
+      filename: string;
+      filePath: string;
+      status: string;
+      totalRows?: number;
+      successCount?: number;
+      failedCount?: number;
+      duplicates?: unknown;
+      errors?: unknown;
+      createdAt?: string;
+      updatedAt?: string;
+    }>(`/import/${jobId}`),
+
+  listJobs: () =>
+    apiClient.get<
+      Array<{
+        id: string;
+        filename?: string;
+        filePath?: string;
+        status: string;
+        totalRows?: number;
+        successCount?: number;
+        failedCount?: number;
+        createdAt?: string;
+        updatedAt?: string;
+      }>
+    >("/import/jobs"),
+};
+
+export const exportApi = {
+  createExportJob: (filters?: Record<string, unknown> | null) =>
+    apiClient.post<{ message?: string; jobId: string }>("/exports", {
+      filters: filters || null,
+    }),
+
+  getJob: (jobId: string) =>
+    apiClient.get<{
+      id: string;
+      managerId: string;
+      filters?: Record<string, unknown> | null;
+      filePath?: string | null;
+      status: string;
+      totalRows?: number;
+      createdAt?: string;
+      updatedAt?: string;
+    }>(`/exports/${jobId}`),
+
+  // keep a convenience method if desired, but download should be done with native fetch
+  download: (jobId: string) =>
+    apiClient.get<{ fileUrl?: string }>(`/exports/${jobId}/download`),
+};

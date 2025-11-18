@@ -30,6 +30,7 @@ import {
 } from "@/types";
 import { debounce } from "@/lib/utils";
 import { InfluencerStatus } from "@/lib/shared-types";
+import { extractInstagramUsername } from "@/lib/instagram-utils";
 
 export default function EditInfluencerPage() {
   const params = useParams();
@@ -88,11 +89,27 @@ export default function EditInfluencerPage() {
         }
       } else {
         const message =
-          error.response?.data?.error || "Failed to update influencer";
+          error.response?.data?.error || "Failed to update influencer!";
         toast.error(message);
       }
     },
   });
+
+  // Handle name input - extract Instagram username if URL is pasted
+  const handleNameInput = (value: string) => {
+    const extractedUsername = extractInstagramUsername(value);
+
+    if (extractedUsername) {
+      // If it's an Instagram URL, extract username and set as name
+      setFormData((prev) => ({
+        ...prev,
+        name: extractedUsername,
+      }));
+    } else {
+      // If it's not an Instagram URL, just set the name normally
+      setFormData((prev) => ({ ...prev, name: value }));
+    }
+  };
 
   // Debounced duplicate check with optimizations
   const checkForDuplicates = debounce(
@@ -325,10 +342,13 @@ export default function EditInfluencerPage() {
                     <label className="text-sm font-medium">Name *</label>
                     <Input
                       value={formData.name}
-                      onChange={(e) => handleChange("name", e.target.value)}
-                      placeholder="Full name"
+                      onChange={(e) => handleNameInput(e.target.value)}
+                      placeholder="Full name or Instagram URL"
                       required
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Paste Instagram URL to auto-extract username as name
+                    </p>
                   </div>
 
                   <div>

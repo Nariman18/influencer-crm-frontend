@@ -48,6 +48,8 @@ import { useDispatch } from "react-redux";
 import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
 import { InfluencerStatus } from "@/lib/shared-types";
 import { influencerApi } from "@/lib/api/services";
+import { ImportExportControls } from "@/components/ImportExportControls";
+import ExportControls from "@/components/ExportControls";
 
 const statusColors: Record<InfluencerStatus, string> = {
   NOT_SENT: "bg-gray-100 text-gray-800",
@@ -177,6 +179,7 @@ export default function InfluencersPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Bulk actions (when selection exists) */}
             {selectedInfluencers.length > 0 && (
               <div className="flex items-center gap-2 mr-4">
                 <Button
@@ -202,6 +205,13 @@ export default function InfluencersPage() {
                 </Button>
               </div>
             )}
+
+            {/* Import / Export controls (placed next to bulk actions and Add button) */}
+            <div className="flex items-center gap-2">
+              <ImportExportControls />
+            </div>
+
+            {/* Add influencer button */}
             <Link href="/influencers/new">
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
