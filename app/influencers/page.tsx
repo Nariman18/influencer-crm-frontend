@@ -49,7 +49,6 @@ import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
 import { InfluencerStatus } from "@/lib/shared-types";
 import { influencerApi } from "@/lib/api/services";
 import { ImportExportControls } from "@/components/ImportExportControls";
-import ExportControls from "@/components/ExportControls";
 
 const statusColors: Record<InfluencerStatus, string> = {
   NOT_SENT: "bg-gray-100 text-gray-800",
@@ -431,27 +430,39 @@ export default function InfluencersPage() {
                     </TableCell>
                     <TableCell>
                       {influencer.link ? (
-                        <Link
-                          href={influencer.link}
+                        <a
+                          href={String(influencer.link)}
                           className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           {influencer.instagramHandle || "View Profile"}
-                        </Link>
+                        </a>
                       ) : influencer.instagramHandle ? (
-                        // Construct link from handle if no direct link
-                        <Link
-                          href={`${influencer.instagramHandle.replace(
-                            "@",
-                            ""
-                          )}`}
-                          className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {influencer.instagramHandle}
-                        </Link>
+                        // construct a canonical instagram url from handle (guard before using .replace)
+                        (() => {
+                          const handle =
+                            typeof influencer.instagramHandle === "string"
+                              ? influencer.instagramHandle
+                                  .replace(/^@+/, "")
+                                  .trim()
+                              : "";
+                          const href = handle
+                            ? `https://instagram.com/${encodeURIComponent(
+                                handle
+                              )}`
+                            : "#";
+                          return (
+                            <a
+                              href={href}
+                              className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {influencer.instagramHandle}
+                            </a>
+                          );
+                        })()
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}

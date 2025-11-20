@@ -231,19 +231,16 @@ export default function ContractDetailPage() {
                         <p className="text-sm">{contract.nickname}</p>
                       </div>
                     )}
-                    {contract.link && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Instagram Link
-                        </p>
-                        <Link
-                          href={contract.link}
-                          className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
-                        >
-                          {contract.link}
-                        </Link>
-                      </div>
-                    )}
+                    {contract.link ? (
+                      <a
+                        href={String(contract.link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
+                      >
+                        {contract.link}
+                      </a>
+                    ) : null}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -396,12 +393,24 @@ export default function ContractDetailPage() {
                   </div>
                 )}
 
-                <Link href={`/influencers/${contract.influencer?.id}`}>
-                  <Button variant="outline" size="sm" className="w-full">
+                {contract.influencer?.id ? (
+                  <Link href={`/influencers/${contract.influencer.id}`}>
+                    <Button variant="outline" size="sm" className="w-full">
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Influencer
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled
+                  >
                     <Eye className="h-4 w-4 mr-2" />
                     View Influencer
                   </Button>
-                </Link>
+                )}
               </CardContent>
             </Card>
 

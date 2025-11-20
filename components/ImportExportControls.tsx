@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useImportExport } from "@/lib/hooks/useImportExport";
 import type { User } from "@/types";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
+import { importApi } from "@/lib/api/services";
 
 /**
  * Local type describing the shape returned by your useCurrentUser hook.
@@ -35,6 +36,7 @@ export const ImportExportControls: React.FC = () => {
   const [currentExportJob, setCurrentExportJob] = useState<string | null>(null);
   const [loadingImport, setLoadingImport] = useState(false);
   const [loadingExport, setLoadingExport] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const onChooseFile = () => fileRef.current?.click();
 
@@ -54,6 +56,35 @@ export const ImportExportControls: React.FC = () => {
       // Optionally automatically watch via socket: useImportExport watches globally
     } else {
       toast.error("Unexpected server response");
+    }
+
+    // clear file input so same file can be selected again if needed
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const onCancelImport = async () => {
+    if (!currentImportJob) {
+      toast.error("No import job selected");
+      return;
+    }
+    setCancelling(true);
+    try {
+      await importApi.cancelJob(currentImportJob);
+      toast.success("Cancel requested");
+
+      // Optional: fetch fresh job row to reflect new status in UI (importApi.getJob)
+      try {
+        const jobResp = await importApi.getJob(currentImportJob);
+        // you might want to do something with jobResp.data here if needed
+        console.log("Import job after cancel:", jobResp.data);
+      } catch (e) {
+        // ignore fetch error
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to cancel import job");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -88,6 +119,10 @@ export const ImportExportControls: React.FC = () => {
     ? exportProgress[currentExportJob] ?? null
     : null;
 
+  const isImportActive = Boolean(
+    currentImportJob && !(importState?.done || importState?.error)
+  );
+
   return (
     <div className="flex items-center gap-2">
       <input
@@ -97,7 +132,11 @@ export const ImportExportControls: React.FC = () => {
         onChange={onFile}
         style={{ display: "none" }}
       />
-      <Button onClick={onChooseFile} size="sm" disabled={loadingImport}>
+      <Button
+        onClick={onChooseFile}
+        size="sm"
+        disabled={loadingImport || isImportActive}
+      >
         Import
       </Button>
 
@@ -113,6 +152,18 @@ export const ImportExportControls: React.FC = () => {
         ) : null}
       </div>
 
+      {/* Cancel button — shown only when an import job is active (queued/processing) */}
+      {isImportActive && (
+        <Button
+          onClick={onCancelImport}
+          size="sm"
+          variant="destructive"
+          disabled={cancelling}
+        >
+          {cancelling ? "Cancelling..." : "Cancel Import"}
+        </Button>
+      )}
+
       <Button
         onClick={startExport}
         size="sm"
@@ -124,7 +175,7 @@ export const ImportExportControls: React.FC = () => {
 
       <div className="text-sm">
         {exportState ? (
-          exportState.done ? (
+          exportState.done || exportState.downloadReady ? (
             <button onClick={onDownload} className="underline text-blue-700">
               Download
             </button>

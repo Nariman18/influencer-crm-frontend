@@ -348,7 +348,6 @@ export const importApi = {
   uploadFile: (file: File) => {
     const fd = new FormData();
     fd.append("file", file, file.name);
-
     const token = localStorage.getItem("token");
     return apiClient.post("/import/influencers", fd, {
       headers: {
@@ -358,57 +357,20 @@ export const importApi = {
   },
 
   // Get import job status
-  getJob: (jobId: string) =>
-    apiClient.get<{
-      id: string;
-      managerId: string;
-      filename: string;
-      filePath: string;
-      status: string;
-      totalRows?: number;
-      successCount?: number;
-      failedCount?: number;
-      duplicates?: unknown;
-      errors?: unknown;
-      createdAt?: string;
-      updatedAt?: string;
-    }>(`/import/${jobId}`),
 
-  listJobs: () =>
-    apiClient.get<
-      Array<{
-        id: string;
-        filename?: string;
-        filePath?: string;
-        status: string;
-        totalRows?: number;
-        successCount?: number;
-        failedCount?: number;
-        createdAt?: string;
-        updatedAt?: string;
-      }>
-    >("/import/jobs"),
+  getJob: (jobId: string) => apiClient.get(`/import/${jobId}/status`),
+  cancelJob: (jobId: string) => apiClient.delete(`/import/${jobId}`),
 };
 
 export const exportApi = {
   createExportJob: (filters?: Record<string, unknown> | null) =>
-    apiClient.post<{ message?: string; jobId: string }>("/exports", {
+    apiClient.post<{ message?: string; jobId: string }>("/export", {
       filters: filters || null,
     }),
 
-  getJob: (jobId: string) =>
-    apiClient.get<{
-      id: string;
-      managerId: string;
-      filters?: Record<string, unknown> | null;
-      filePath?: string | null;
-      status: string;
-      totalRows?: number;
-      createdAt?: string;
-      updatedAt?: string;
-    }>(`/exports/${jobId}`),
+  getJob: (jobId: string) => apiClient.get(`/export/${jobId}/status`),
 
   // keep a convenience method if desired, but download should be done with native fetch
   download: (jobId: string) =>
-    apiClient.get<{ fileUrl?: string }>(`/exports/${jobId}/download`),
+    apiClient.get(`/export/${jobId}/download`, { responseType: "blob" }),
 };

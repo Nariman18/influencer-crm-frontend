@@ -486,11 +486,21 @@ export default function EditInfluencerPage() {
               </div>
 
               <div className="flex justify-end space-x-4">
-                <Link href={`/influencers/${influencerId}`}>
-                  <Button type="button" variant="outline">
+                {influencerId ? (
+                  <Link href={`/influencers/${influencerId}`}>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push("/influencers")}
+                  >
                     Cancel
                   </Button>
-                </Link>
+                )}
                 <Button
                   type="submit"
                   disabled={updateMutation.isPending || isCheckingDuplicates}

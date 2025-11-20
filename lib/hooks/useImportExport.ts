@@ -115,7 +115,7 @@ export const useImportExport = (opts: { managerId?: string } = {}) => {
 
   useEffect(() => {
     try {
-      const s = initSocketClient();
+      const s = initSocketClient(localStorage.getItem("token") || undefined);
       socketRef.current = s;
 
       s.on("connect", () => {
@@ -226,7 +226,11 @@ export const useImportExport = (opts: { managerId?: string } = {}) => {
   ): Promise<{ ok?: true; error?: string }> => {
     try {
       const base = process.env.NEXT_PUBLIC_API_URL || "";
-      const url = `${base.replace(/\/$/, "")}/exports/${jobId}/download`;
+      const baseNormalized = base.replace(/\/$/, "");
+      const apiBase = baseNormalized.includes("/api")
+        ? baseNormalized
+        : `${baseNormalized}/api`;
+      const url = `${apiBase}/export/${jobId}/download`;
       const resp = await fetch(url, { method: "GET", credentials: "include" });
       if (!resp.ok) {
         const text = await resp.text().catch(() => null);

@@ -144,12 +144,11 @@ export default function InfluencerDetailsPage() {
               <Mail className="h-4 w-4 mr-2" />
               Send Email
             </Button>
-            <Link href={`/influencers/${influencer.id}/edit`}>
-              <Button variant="outline">
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            </Link>
+            {influencer?.id ? (
+              <Link href={`/influencers/${influencer.id}/edit`}>
+                <Button variant="outline">Edit</Button>
+              </Link>
+            ) : null}
             <Button
               variant="outline"
               onClick={() => deleteMutation.mutate(influencer.id)}
@@ -425,12 +424,14 @@ export default function InfluencerDetailsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Contracts</span>
-                  <Link href={`/contracts?influencerId=${influencer.id}`}>
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4 mr-1" />
-                      View All
-                    </Button>
-                  </Link>
+                  {influencer?.id ? (
+                    <Link href={`/contracts?influencerId=${influencer.id}`}>
+                      <Button variant="outline" size="sm">
+                        {" "}
+                        View All{" "}
+                      </Button>
+                    </Link>
+                  ) : null}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -504,11 +505,13 @@ export default function InfluencerDetailsPage() {
                     No emails sent yet
                   </p>
                 )}
-                <Link href={`/emails?influencerId=${influencer.id}`}>
-                  <Button variant="outline" className="w-full mt-4" size="sm">
-                    View All Emails
-                  </Button>
-                </Link>
+                {influencer?.id ? (
+                  <Link href={`/emails?influencerId=${influencer.id}`}>
+                    <Button variant="outline" className="w-full mt-4" size="sm">
+                      View All Emails
+                    </Button>
+                  </Link>
+                ) : null}
               </CardContent>
             </Card>
           </div>

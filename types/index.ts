@@ -233,17 +233,6 @@ export interface BulkOperationResult {
   message?: string;
 }
 
-export interface ImportInfluencerData {
-  name: string;
-  email?: string;
-  instagramHandle?: string;
-  followers?: number;
-  engagementRate?: number;
-  niche?: string;
-  country?: string;
-  notes?: string;
-}
-
 // Campaign Form Data
 export interface CreateCampaignData {
   name: string;
@@ -330,6 +319,64 @@ export interface DuplicateCheckResult {
   isDuplicate: boolean;
   duplicate?: DuplicateInfluencer;
 }
+
+export type ImportJob = {
+  id: string;
+  managerId: string;
+  filename: string;
+  filePath?: string;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  totalRows?: number;
+  successCount?: number;
+  failedCount?: number;
+  duplicates?: unknown;
+  errors?: unknown;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export interface ImportInfluencerData {
+  // optional because import rows can be partial and backend does parse/validate
+  name?: string | null;
+  email?: string | null;
+  instagramHandle?: string | null;
+  link?: string | null;
+  followers?: number | null;
+  country?: string | null;
+  notes?: string | null;
+  status?: InfluencerStatus | string | null;
+}
+
+export type ExportJob = {
+  id: string;
+  managerId: string;
+  filters?: unknown;
+  filePath?: string | null;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  totalRows?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type ImportProgressEvent = {
+  jobId: string;
+  processed?: number;
+  success?: number;
+  failed?: number;
+  duplicatesCount?: number;
+  done?: boolean;
+  error?: string;
+};
+
+export type ExportProgressEvent = {
+  jobId: string;
+  processed?: number;
+  total?: number;
+  percent?: number | null;
+  done?: boolean;
+  downloadReady?: boolean;
+  error?: string;
+};
 
 export interface ApiError {
   response?: {
