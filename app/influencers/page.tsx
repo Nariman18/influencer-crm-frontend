@@ -245,6 +245,7 @@ export default function InfluencersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value="NOT_SENT">Not Sent</SelectItem>
                 <SelectItem value="PING_1">Ping 1</SelectItem>
                 <SelectItem value="PING_2">Ping 2</SelectItem>
                 <SelectItem value="PING_3">Ping 3</SelectItem>
