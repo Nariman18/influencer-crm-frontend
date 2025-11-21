@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -126,6 +127,9 @@ export function SendEmailDialog({
             Send Email to {influencer.name}
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
           </DialogTitle>
+          <DialogDescription>
+            Compose and send an email to this influencer
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -247,6 +247,9 @@ export function BulkSendEmailDialog({
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 )}
               </DialogTitle>
+              <DialogDescription className="mt-1">
+                Send emails to selected influencers
+              </DialogDescription>
             </div>
 
             <div>

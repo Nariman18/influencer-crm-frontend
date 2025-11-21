@@ -80,6 +80,8 @@ export default function InfluencersPage() {
   const [influencerToDelete, setInfluencerToDelete] = useState<string | null>(
     null
   );
+  const [stoppedAutomations, setStoppedAutomations] = useState<Set<string>>(new Set());
+  const [stoppingAutomation, setStoppingAutomation] = useState<string | null>(null);
 
   const handleSelectInfluencer = (influencer: Influencer, checked: boolean) => {
     if (checked) {
@@ -488,29 +490,43 @@ export default function InfluencersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {["PING_1", "PING_2", "PING_3"].includes(
+                      {stoppedAutomations.has(influencer.id) ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-gray-400 border-gray-300 cursor-not-allowed"
+                          disabled
+                        >
+                          Stopped
+                        </Button>
+                      ) : ["PING_1", "PING_2", "PING_3"].includes(
                         influencer.status
                       ) ? (
                         <Button
                           variant="outline"
                           size="sm"
                           className="text-red-600 border-red-400 hover:bg-red-50"
+                          disabled={stoppingAutomation === influencer.id}
                           onClick={async () => {
                             try {
+                              setStoppingAutomation(influencer.id);
                               const resp = await influencerApi.stopAutomation(
                                 influencer.id
                               );
                               toast.success(
                                 resp.data?.message || "Automation stopped"
                               );
+                              setStoppedAutomations(prev => new Set(prev).add(influencer.id));
                               updateFilters({});
                             } catch (err) {
                               console.error(err);
                               toast.error("Failed to stop automation");
+                            } finally {
+                              setStoppingAutomation(null);
                             }
                           }}
                         >
-                          Stop
+                          {stoppingAutomation === influencer.id ? "Stopping..." : "Stop"}
                         </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
