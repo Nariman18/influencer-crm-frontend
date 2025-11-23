@@ -1,3 +1,4 @@
+// google-connect-dialog.tsx
 "use client";
 
 import { useState } from "react";
@@ -70,7 +71,8 @@ export function GoogleConnectDialog({
     }
 
     const redirectUri = `${window.location.origin}/auth/callback`;
-    // No need for replace - it breaks the protocol. If you want to clean extra path slashes, use a more targeted regex like replace(/\/+/g, '/') on the path only
+
+    // ✅ UPDATED SCOPES - Added gmail.send for Sent folder copy
     const scope = [
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/gmail.send",
@@ -81,7 +83,7 @@ export function GoogleConnectDialog({
     const authUrl =
       `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${clientId}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` + // Use redirectUri directly
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&response_type=code` +
       `&scope=${encodeURIComponent(scope)}` +
       `&access_type=offline` +
@@ -102,8 +104,8 @@ export function GoogleConnectDialog({
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Connect your Gmail account to send emails to influencers directly
-            from the CRM.
+            Connect your Gmail account to track email replies and maintain your
+            sent folder automatically.
           </p>
           <Button
             onClick={handleGoogleAuth}
