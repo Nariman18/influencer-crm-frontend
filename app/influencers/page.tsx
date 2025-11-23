@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ApiError, Influencer } from "@/types";
+import { Influencer } from "@/types";
 import { toast } from "sonner";
 import {
   Plus,
@@ -33,6 +33,7 @@ import {
   MailCheck,
   MailX,
   Eye,
+  MapPin,
 } from "lucide-react";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils";
@@ -49,6 +50,7 @@ import { ConfirmationDialog } from "@/components/layout/confirmation-dialog";
 import { InfluencerStatus } from "@/lib/shared-types";
 import { influencerApi } from "@/lib/api/services";
 import { ImportExportControls } from "@/components/ImportExportControls";
+import { useQuery } from "@tanstack/react-query";
 
 const statusColors: Record<InfluencerStatus, string> = {
   NOT_SENT: "bg-gray-100 text-gray-800",
@@ -58,6 +60,51 @@ const statusColors: Record<InfluencerStatus, string> = {
   CONTRACT: "bg-green-100 text-green-800",
   REJECTED: "bg-red-100 text-red-800",
   COMPLETED: "bg-gray-100 text-gray-800",
+};
+
+// Helper function to extract Instagram username from URL
+const extractInstagramUsername = (url: string | null | undefined): string => {
+  if (!url) return "-";
+
+  const urlStr = String(url);
+
+  // If it's already just a username (no URL), return it
+  if (!urlStr.includes("/") && !urlStr.includes("instagram.com")) {
+    return urlStr.replace(/^@+/, "").trim();
+  }
+
+  try {
+    // Extract username from Instagram URL patterns
+    const patterns = [
+      /instagram\.com\/([A-Za-z0-9._]+)(?:\/|$|\?)/i,
+      /instagr\.am\/([A-Za-z0-9._]+)(?:\/|$|\?)/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = urlStr.match(pattern);
+      if (match && match[1]) {
+        return match[1].replace(/^@/, "").trim();
+      }
+    }
+
+    // If no pattern matches but it looks like a URL, return the last part
+    if (urlStr.includes("instagram.com") || urlStr.includes("instagr.am")) {
+      const parts = urlStr.split("/").filter(Boolean);
+      const lastPart = parts[parts.length - 1];
+      if (
+        lastPart &&
+        lastPart !== "instagram.com" &&
+        lastPart !== "instagr.am"
+      ) {
+        return lastPart.replace(/^@/, "").split("?")[0].trim();
+      }
+    }
+
+    // Fallback: return the original if it's short enough
+    return urlStr.length > 30 ? "View Profile" : urlStr;
+  } catch {
+    return "View Profile";
+  }
 };
 
 export default function InfluencersPage() {
@@ -80,8 +127,20 @@ export default function InfluencersPage() {
   const [influencerToDelete, setInfluencerToDelete] = useState<string | null>(
     null
   );
-  const [stoppedAutomations, setStoppedAutomations] = useState<Set<string>>(new Set());
-  const [stoppingAutomation, setStoppingAutomation] = useState<string | null>(null);
+  const [stoppedAutomations, setStoppedAutomations] = useState<Set<string>>(
+    new Set()
+  );
+  const [stoppingAutomation, setStoppingAutomation] = useState<string | null>(
+    null
+  );
+
+  const { data: countriesData } = useQuery({
+    queryKey: ["countries"],
+    queryFn: () => influencerApi.getCountries(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const availableCountries = countriesData?.countries || [];
 
   const handleSelectInfluencer = (influencer: Influencer, checked: boolean) => {
     if (checked) {
@@ -158,16 +217,12 @@ export default function InfluencersPage() {
   const isAllSelected =
     selectedInfluencers.length === influencers.length && influencers.length > 0;
 
-  // Count influencers with emails in current selection
   const influencersWithEmails = selectedInfluencers.filter(
     (influencer) => influencer.email
   );
 
-  // Use pagination directly from API response
   const currentPage = apiPagination?.page || 1;
   const totalPages = apiPagination?.totalPages || 1;
-  const hasNext = currentPage < totalPages;
-  const hasPrev = currentPage > 1;
 
   return (
     <DashboardLayout>
@@ -180,7 +235,6 @@ export default function InfluencersPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Bulk actions (when selection exists) */}
             {selectedInfluencers.length > 0 && (
               <div className="flex items-center gap-2 mr-4">
                 <Button
@@ -207,12 +261,10 @@ export default function InfluencersPage() {
               </div>
             )}
 
-            {/* Import / Export controls (placed next to bulk actions and Add button) */}
             <div className="flex items-center gap-2">
               <ImportExportControls />
             </div>
 
-            {/* Add influencer button */}
             <Link href="/influencers/new">
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -222,7 +274,6 @@ export default function InfluencersPage() {
           </div>
         </div>
 
-        {/* Filters */}
         <Card className="p-4">
           <div className="flex gap-4 flex-wrap">
             <div className="flex-1 min-w-[300px] relative">
@@ -255,7 +306,6 @@ export default function InfluencersPage() {
               </SelectContent>
             </Select>
 
-            {/* Email Filter */}
             <Select
               value={filters.emailFilter || "ALL"}
               onValueChange={(value) =>
@@ -288,10 +338,45 @@ export default function InfluencersPage() {
                 </SelectItem>
               </SelectContent>
             </Select>
+
+            <Select
+              value={filters.country || "ALL"}
+              onValueChange={(value) =>
+                updateFilters({
+                  country: value === "ALL" ? undefined : value,
+                })
+              }
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by country" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    All Countries
+                  </div>
+                </SelectItem>
+                {availableCountries.map((country) => (
+                  <SelectItem key={country} value={country}>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-blue-600" />
+                      {country}
+                    </div>
+                  </SelectItem>
+                ))}
+                {availableCountries.length === 0 && (
+                  <SelectItem value="NONE" disabled>
+                    <span className="text-muted-foreground text-sm">
+                      No countries available
+                    </span>
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
         </Card>
 
-        {/* Show when viewing ALL influencers */}
         {filters.emailFilter === "ALL" && (
           <div className="grid grid-cols-1 gap-4">
             <Card>
@@ -301,7 +386,6 @@ export default function InfluencersPage() {
                     <p className="text-sm font-medium text-muted-foreground">
                       Total
                     </p>
-                    {/* Use currentTotalCount instead of totalCount from pagination */}
                     <p className="text-2xl font-bold">{currentTotalCount}</p>
                   </div>
                   <Users className="h-8 w-8 text-muted-foreground" />
@@ -311,7 +395,6 @@ export default function InfluencersPage() {
           </div>
         )}
 
-        {/* When filtering by email status */}
         {filters.emailFilter !== "ALL" && (
           <div className="grid grid-cols-1 gap-4">
             <Card>
@@ -344,7 +427,6 @@ export default function InfluencersPage() {
           </div>
         )}
 
-        {/* Table */}
         <Card>
           <Table>
             <TableHeader>
@@ -356,8 +438,8 @@ export default function InfluencersPage() {
                     aria-label="Select all influencers"
                   />
                 </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>
+                <TableHead className="w-[180px]">Name</TableHead>
+                <TableHead className="w-[220px]">
                   <div className="flex items-center gap-1">
                     Email
                     {filters.emailFilter === "HAS_EMAIL" && (
@@ -365,25 +447,30 @@ export default function InfluencersPage() {
                     )}
                   </div>
                 </TableHead>
-                <TableHead>Instagram</TableHead>
-                <TableHead>Followers</TableHead>
-                <TableHead>Manager</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Automation</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-[140px]">Instagram</TableHead>
+                <TableHead className="w-[140px]">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Country
+                  </div>
+                </TableHead>
+                <TableHead className="w-[180px]">Manager</TableHead>
+                <TableHead className="w-[120px]">Status</TableHead>
+                <TableHead className="w-[120px]">Automation</TableHead>
+                <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : influencers.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={9}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {filters.emailFilter === "HAS_EMAIL"
@@ -407,7 +494,7 @@ export default function InfluencersPage() {
                         aria-label={`Select ${influencer.name}`}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium max-w-[180px] truncate">
                       <Link
                         href={`/influencers/${influencer.id}`}
                         className="hover:text-primary hover:underline"
@@ -415,8 +502,8 @@ export default function InfluencersPage() {
                         {influencer.name}
                       </Link>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
+                    <TableCell className="max-w-[220px]">
+                      <div className="flex items-center gap-1 truncate">
                         {influencer.email ? (
                           <>
                             <MailCheck className="h-3 w-3 text-green-600" />
@@ -431,47 +518,46 @@ export default function InfluencersPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {influencer.link ? (
+                    <TableCell className="max-w-[140px] truncate">
+                      {influencer.link || influencer.instagramHandle ? (
                         <a
-                          href={String(influencer.link)}
+                          href={
+                            influencer.link
+                              ? String(influencer.link)
+                              : influencer.instagramHandle?.includes(
+                                  "instagram.com"
+                                )
+                              ? String(influencer.instagramHandle)
+                              : `https://instagram.com/${encodeURIComponent(
+                                  String(influencer.instagramHandle).replace(
+                                    /^@+/,
+                                    ""
+                                  )
+                                )}`
+                          }
                           className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          {influencer.instagramHandle || "View Profile"}
+                          {extractInstagramUsername(
+                            influencer.link || influencer.instagramHandle
+                          )}
                         </a>
-                      ) : influencer.instagramHandle ? (
-                        // construct a canonical instagram url from handle (guard before using .replace)
-                        (() => {
-                          const handle =
-                            typeof influencer.instagramHandle === "string"
-                              ? influencer.instagramHandle
-                                  .replace(/^@+/, "")
-                                  .trim()
-                              : "";
-                          const href = handle
-                            ? `https://instagram.com/${encodeURIComponent(
-                                handle
-                              )}`
-                            : "#";
-                          return (
-                            <a
-                              href={href}
-                              className="hover:underline text-gray-500 hover:text-gray-800 transition-colors"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {influencer.instagramHandle}
-                            </a>
-                          );
-                        })()
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>{formatNumber(influencer.followers)}</TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-[140px]">
+                      {influencer.country ? (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3 text-blue-600" />
+                          <span className="text-sm">{influencer.country}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[180px]">
                       {influencer.manager ? (
                         <div className="flex flex-col">
                           <span className="font-medium text-sm">
@@ -501,8 +587,8 @@ export default function InfluencersPage() {
                           Stopped
                         </Button>
                       ) : ["PING_1", "PING_2", "PING_3"].includes(
-                        influencer.status
-                      ) ? (
+                          influencer.status
+                        ) ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -517,7 +603,9 @@ export default function InfluencersPage() {
                               toast.success(
                                 resp.data?.message || "Automation stopped"
                               );
-                              setStoppedAutomations(prev => new Set(prev).add(influencer.id));
+                              setStoppedAutomations((prev) =>
+                                new Set(prev).add(influencer.id)
+                              );
                               updateFilters({});
                             } catch (err) {
                               console.error(err);
@@ -527,7 +615,9 @@ export default function InfluencersPage() {
                             }
                           }}
                         >
-                          {stoppingAutomation === influencer.id ? "Stopping..." : "Stop"}
+                          {stoppingAutomation === influencer.id
+                            ? "Stopping..."
+                            : "Stop"}
                         </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -555,7 +645,6 @@ export default function InfluencersPage() {
           </Table>
         </Card>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-4">
             <Button
@@ -585,7 +674,6 @@ export default function InfluencersPage() {
         )}
       </div>
 
-      {/* Bulk Email Dialog */}
       <BulkSendEmailDialog
         open={bulkEmailDialogOpen}
         onOpenChange={setBulkEmailDialogOpen}
@@ -593,7 +681,6 @@ export default function InfluencersPage() {
         onSelectionClear={() => dispatch(clearSelectedInfluencers())}
       />
 
-      {/* Single Delete Confirmation Dialog */}
       <ConfirmationDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -604,7 +691,6 @@ export default function InfluencersPage() {
         onConfirm={handleDeleteInfluencer}
       />
 
-      {/* Bulk Delete Confirmation Dialog */}
       <ConfirmationDialog
         open={bulkDeleteDialogOpen}
         onOpenChange={setBulkDeleteDialogOpen}

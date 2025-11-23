@@ -179,6 +179,14 @@ export const influencerApi = {
   stopAutomation: (id: string) =>
     apiClient.post(`/influencers/${id}/automation/cancel`),
 
+  getCountries: async () => {
+    const response = await apiClient.get<{
+      countries: string[];
+      total: number;
+    }>("/influencers/countries");
+    return response.data;
+  },
+
   bulkUpdateStatus: (ids: string[], status: InfluencerStatus) =>
     apiClient.post<{ message: string; count: number }>(
       "/influencers/bulk/update-status",

@@ -23,6 +23,7 @@ interface ApiParams {
   status?: InfluencerStatus;
   search?: string;
   emailFilter?: string;
+  country?: string;
 }
 
 export const useInfluencers = () => {
@@ -73,6 +74,7 @@ export const useInfluencers = () => {
         if (filters.search) params.search = filters.search;
         if (filters.status !== "ALL")
           params.status = filters.status as InfluencerStatus;
+        if (filters.country) params.country = filters.country;
 
         // Email filter
         if (filters.emailFilter === "HAS_EMAIL") {

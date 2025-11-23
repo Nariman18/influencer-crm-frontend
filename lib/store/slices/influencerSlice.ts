@@ -6,6 +6,7 @@ export interface InfluencerFilters {
   status?: InfluencerStatus | "ALL";
   search?: string;
   emailFilter?: "ALL" | "HAS_EMAIL" | "NO_EMAIL";
+  country?: string;
   page?: number;
   limit?: number;
 }
@@ -30,6 +31,7 @@ const initialState: InfluencersState = {
   filters: {
     status: "ALL",
     emailFilter: "ALL",
+    country: undefined,
     page: 1,
     limit: 50,
   },
@@ -73,7 +75,8 @@ const influencersSlice = createSlice({
       const isFilterChange =
         state.filters.status !== newFilters.status ||
         state.filters.search !== newFilters.search ||
-        state.filters.emailFilter !== newFilters.emailFilter;
+        state.filters.emailFilter !== newFilters.emailFilter ||
+        state.filters.country !== newFilters.country;
 
       if (isFilterChange && !isPageChange) {
         newFilters.page = 1;
@@ -94,6 +97,7 @@ const influencersSlice = createSlice({
       state.filters = {
         status: "ALL",
         emailFilter: "ALL",
+        country: undefined,
         page: 1,
         limit: 50,
       };
