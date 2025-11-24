@@ -420,21 +420,6 @@ export default function InfluencersPage() {
                 )}
               </SelectContent>
             </Select>
-
-            <Select
-              value={pageSize.toString()}
-              onValueChange={handlePageSizeChange}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25">25 per page</SelectItem>
-                <SelectItem value="50">50 per page</SelectItem>
-                <SelectItem value="100">100 per page</SelectItem>
-                <SelectItem value="200">200 per page</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </Card>
 
