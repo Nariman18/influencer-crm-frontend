@@ -22,9 +22,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { emailApi } from "@/lib/api/services";
-import { Email } from "@/types";
+import { Email, PaginatedResponse } from "@/types";
 import { EmailStatus, isValidEmailStatus } from "@/lib/shared-types";
-import { Search, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  Search,
+  AlertCircle,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -50,25 +56,33 @@ const statusColors: Record<EmailStatus, string> = {
 export default function EmailsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   const {
     data: emailsResponse,
     isLoading,
     isError,
     refetch,
-  } = useQuery({
-    queryKey: ["emails", statusFilter],
-    queryFn: async () => {
-      const params: EmailQueryParams = {};
+  } = useQuery<PaginatedResponse<Email>>({
+    queryKey: ["emails", statusFilter, currentPage, pageSize],
+    queryFn: async (): Promise<PaginatedResponse<Email>> => {
+      const params: EmailQueryParams = {
+        page: currentPage,
+        limit: pageSize,
+      };
+
       if (statusFilter !== "ALL" && isValidEmailStatus(statusFilter)) {
         params.status = statusFilter;
       }
+
       const response = await emailApi.getAll(params);
       return response.data;
     },
     retry: 1,
     staleTime: 15000,
     refetchInterval: 10000,
+    placeholderData: (previousData) => previousData, // React Query v5: Keep showing old data
   });
 
   const handleStatusChange = useCallback((value: string) => {
@@ -80,11 +94,20 @@ export default function EmailsPage() {
       console.warn("Invalid EmailStatus value:", value);
       setStatusFilter("ALL");
     }
+    // Reset to page 1 when filter changes
+    setCurrentPage(1);
   }, []);
 
-  const emailData = emailsResponse?.data || [];
-  // const pagination = emailsResponse?.pagination;
+  const handlePageSizeChange = useCallback((value: string) => {
+    const newSize = parseInt(value, 10);
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  }, []);
 
+  const emailData: Email[] = emailsResponse?.data ?? [];
+  const pagination = emailsResponse?.pagination;
+
+  // Client-side search filtering (only on current page)
   const filteredEmails = emailData.filter((email: Email) => {
     if (!email?.influencer) return false;
 
@@ -97,7 +120,7 @@ export default function EmailsPage() {
     return matchesSearch;
   });
 
-  const formatDate = (dateString: string | null | undefined) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return "-";
     try {
       return new Date(dateString).toLocaleString();
@@ -109,6 +132,62 @@ export default function EmailsPage() {
   const getStatusBadge = (status: EmailStatus) => {
     const colorClass = statusColors[status] || "bg-gray-100 text-gray-800";
     return <Badge className={colorClass}>{status}</Badge>;
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (pagination && currentPage < pagination.totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handleGoToPage = (page: number) => {
+    if (pagination && page >= 1 && page <= pagination.totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Generate page numbers to show
+  const getPageNumbers = (): (number | string)[] => {
+    if (!pagination) return [];
+
+    const { totalPages } = pagination;
+    const pages: (number | string)[] = [];
+
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show first page, last page, and pages around current page
+      pages.push(1);
+
+      if (currentPage > 3) {
+        pages.push("...");
+      }
+
+      for (
+        let i = Math.max(2, currentPage - 1);
+        i <= Math.min(totalPages - 1, currentPage + 1);
+        i++
+      ) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 2) {
+        pages.push("...");
+      }
+
+      pages.push(totalPages);
+    }
+
+    return pages;
   };
 
   if (isError) {
@@ -175,8 +254,36 @@ export default function EmailsPage() {
                 <SelectItem value={EmailStatus.REPLIED}>Replied</SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={pageSize.toString()}
+              onValueChange={handlePageSizeChange}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="100">100 per page</SelectItem>
+                <SelectItem value="200">200 per page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </Card>
+
+        {/* Pagination Info */}
+        {pagination && pagination.total > 0 && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div>
+              Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+              {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+              of {pagination.total} emails
+            </div>
+            <div>
+              Page {pagination.page} of {pagination.totalPages}
+            </div>
+          </div>
+        )}
 
         <Card>
           <Table>
@@ -227,6 +334,64 @@ export default function EmailsPage() {
             </TableBody>
           </Table>
         </Card>
+
+        {/* Pagination Controls */}
+        {pagination && pagination.totalPages > 1 && (
+          <Card className="p-4">
+            <div className="flex items-center justify-center space-x-4">
+              {/* Previous Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1 || isLoading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Previous
+              </Button>
+
+              {/* Page Numbers */}
+              <div className="flex items-center gap-2">
+                {getPageNumbers().map((page, index) => {
+                  if (page === "...") {
+                    return (
+                      <span key={`ellipsis-${index}`} className="px-2">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  const pageNum = page as number;
+                  const isActive = pageNum === currentPage;
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleGoToPage(pageNum)}
+                      disabled={isLoading}
+                      className={isActive ? "" : ""}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {/* Next Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={currentPage >= pagination.totalPages || isLoading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

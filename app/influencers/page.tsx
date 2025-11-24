@@ -34,9 +34,10 @@ import {
   MailX,
   Eye,
   MapPin,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-import { formatNumber } from "@/lib/utils";
 import { BulkSendEmailDialog } from "@/components/emails/bulk-send-email-dialog";
 import {
   addSelectedInfluencer,
@@ -189,6 +190,11 @@ export default function InfluencersPage() {
     }
   };
 
+  const handlePageSizeChange = (value: string) => {
+    const newSize = parseInt(value, 10);
+    updateFilters({ limit: newSize, page: 1 }); // Reset to page 1 when changing page size
+  };
+
   const handleBulkDeleteClick = () => {
     if (selectedInfluencers.length === 0) {
       toast.error("Please select influencers to delete");
@@ -223,6 +229,46 @@ export default function InfluencersPage() {
 
   const currentPage = apiPagination?.page || 1;
   const totalPages = apiPagination?.totalPages || 1;
+  const pageSize = filters.limit || 50; // Default to 50
+  const totalCount = apiPagination?.total || currentTotalCount || 0;
+
+  // Generate page numbers to show with ellipsis
+  const getPageNumbers = (): (number | string)[] => {
+    if (!apiPagination) return [];
+
+    const { totalPages } = apiPagination;
+    const pages: (number | string)[] = [];
+
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show first page, last page, and pages around current page
+      pages.push(1);
+
+      if (currentPage > 3) {
+        pages.push("...");
+      }
+
+      for (
+        let i = Math.max(2, currentPage - 1);
+        i <= Math.min(totalPages - 1, currentPage + 1);
+        i++
+      ) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 2) {
+        pages.push("...");
+      }
+
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
 
   return (
     <DashboardLayout>
@@ -374,6 +420,21 @@ export default function InfluencersPage() {
                 )}
               </SelectContent>
             </Select>
+
+            <Select
+              value={pageSize.toString()}
+              onValueChange={handlePageSizeChange}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="100">100 per page</SelectItem>
+                <SelectItem value="200">200 per page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </Card>
 
@@ -386,7 +447,7 @@ export default function InfluencersPage() {
                     <p className="text-sm font-medium text-muted-foreground">
                       Total
                     </p>
-                    <p className="text-2xl font-bold">{currentTotalCount}</p>
+                    <p className="text-2xl font-bold">{totalCount}</p>
                   </div>
                   <Users className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -413,7 +474,7 @@ export default function InfluencersPage() {
                           : "text-orange-600"
                       }`}
                     >
-                      {currentTotalCount}
+                      {totalCount}
                     </p>
                   </div>
                   {filters.emailFilter === "HAS_EMAIL" ? (
@@ -424,6 +485,20 @@ export default function InfluencersPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Pagination Info */}
+        {totalCount > 0 && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div>
+              Showing {(currentPage - 1) * pageSize + 1} to{" "}
+              {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
+              influencers
+            </div>
+            <div>
+              Page {currentPage} of {totalPages}
+            </div>
           </div>
         )}
 
@@ -645,32 +720,61 @@ export default function InfluencersPage() {
           </Table>
         </Card>
 
+        {/* Enhanced Pagination Controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage <= 1 || isLoading}
-              className="min-w-20"
-            >
-              Previous
-            </Button>
+          <Card className="p-4">
+            <div className="flex items-center justify-center space-x-4">
+              {/* Previous Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1 || isLoading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Previous
+              </Button>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">
-                Page {currentPage} of {totalPages}
-              </span>
+              {/* Page Numbers */}
+              <div className="flex items-center gap-2">
+                {getPageNumbers().map((page, index) => {
+                  if (page === "...") {
+                    return (
+                      <span key={`ellipsis-${index}`} className="px-2">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  const pageNum = page as number;
+                  const isActive = pageNum === currentPage;
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                      disabled={isLoading}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {/* Next Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages || isLoading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
             </div>
-
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages || isLoading}
-              className="min-w-20"
-            >
-              Next
-            </Button>
-          </div>
+          </Card>
         )}
       </div>
 
