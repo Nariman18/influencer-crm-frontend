@@ -190,11 +190,6 @@ export default function InfluencersPage() {
     }
   };
 
-  const handlePageSizeChange = (value: string) => {
-    const newSize = parseInt(value, 10);
-    updateFilters({ limit: newSize, page: 1 }); // Reset to page 1 when changing page size
-  };
-
   const handleBulkDeleteClick = () => {
     if (selectedInfluencers.length === 0) {
       toast.error("Please select influencers to delete");
@@ -229,7 +224,7 @@ export default function InfluencersPage() {
 
   const currentPage = apiPagination?.page || 1;
   const totalPages = apiPagination?.totalPages || 1;
-  const pageSize = filters.limit || 50; // Default to 50
+  const pageSize = filters.limit || 50;
   const totalCount = apiPagination?.total || currentTotalCount || 0;
 
   // Generate page numbers to show with ellipsis
