@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-      <h1 className="text-4xl font-bold mb-4">Influencers CRM App</h1>
+      <h1 className="text-4xl font-bold mb-4">IMX Agency</h1>
       <p className="text-lg mb-6 text-center max-w-md">
         A self-hosted CRM for managing influencer outreach, contracts, and
         campaigns. Replace Excel workflows with automated emails, Instagram DM
