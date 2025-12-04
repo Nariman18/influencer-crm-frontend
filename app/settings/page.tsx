@@ -1,22 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react"; // <-- added useCallback
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { authApi, emailApi } from "@/lib/api/services";
 import { toast } from "sonner";
 import { GoogleConnectDialog } from "@/components/auth/google-connect-dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertCircle, RefreshCw, Mail } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { ApiError, EmailConfig } from "@/types";
 
 export default function SettingsPage() {
@@ -45,7 +38,7 @@ export default function SettingsPage() {
     },
   });
 
-  // memoize checkEmailConfig so it can safely be used inside useEffect and elsewhere
+  // memoized email config check
   const checkEmailConfig = useCallback(async () => {
     if (!user?.hasGoogleAuth) {
       setEmailConfig(null);
@@ -92,12 +85,13 @@ export default function SettingsPage() {
     }, 1000);
   };
 
+  // Prefer Google values when connected, otherwise fall back to app user values
   const googleEmailDisplay = user?.hasGoogleAuth
     ? user?.googleEmail ?? emailConfig?.gmailAddress ?? user?.email
     : user?.email;
 
   const googleNameDisplay = user?.hasGoogleAuth
-    ? user?.googleName ?? emailConfig?.userName ?? user?.name
+    ? user.googleName ?? emailConfig?.userName ?? user?.name
     : user?.name;
 
   return (
@@ -110,147 +104,33 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* Google Account Connection */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Google Account Connection
-            </CardTitle>
-            <CardDescription>
-              Connect your Gmail account to send emails to influencers
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {user?.hasGoogleAuth ? (
-              <div className="space-y-4">
-                <Alert
-                  variant="default"
-                  className="bg-green-50 border-green-200"
-                >
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-800">
-                    <div className="font-semibold">Connected to Google</div>
-                    <div>
-                      Gmail address: {googleEmailDisplay ?? "Connected"}
-                    </div>
-                    <div>Name: {googleNameDisplay ?? "—"}</div>
-                  </AlertDescription>
-                </Alert>
-
-                {emailConfig && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        Email Configuration:
-                      </span>
-                      <Badge
-                        variant={
-                          emailConfig.isValid ? "default" : "destructive"
-                        }
-                      >
-                        {emailConfig.isValid ? "Valid" : "Invalid"}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={checkEmailConfig}
-                        disabled={isCheckingConfig}
-                        className="h-8"
-                      >
-                        <RefreshCw
-                          className={`h-3 w-3 mr-1 ${
-                            isCheckingConfig ? "animate-spin" : ""
-                          }`}
-                        />
-                        {isCheckingConfig ? "Testing..." : "Test"}
-                      </Button>
-                    </div>
-                    {emailConfig.message && (
-                      <p
-                        className={`text-sm ${
-                          emailConfig.isValid
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {emailConfig.message}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {isCheckingConfig && (
-                  <p className="text-sm text-blue-600">
-                    Testing email configuration...
-                  </p>
-                )}
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setConnectDialogOpen(true)}
-                    variant="outline"
-                  >
-                    Reconnect Google Account
-                  </Button>
-                  <Button
-                    onClick={() => disconnectMutation.mutate()}
-                    variant="destructive"
-                    disabled={disconnectMutation.isPending}
-                  >
-                    {disconnectMutation.isPending
-                      ? "Disconnecting..."
-                      : "Disconnect"}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    No Google account connected. Connect your Gmail account to
-                    send emails.
-                  </AlertDescription>
-                </Alert>
-                <Button
-                  onClick={() => setConnectDialogOpen(true)}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  Connect Google Account
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Account Information */}
+        {/* Account Information (includes Google status + actions) */}
         <Card>
           <CardHeader>
             <CardTitle>Account Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+
+          <CardContent className="space-y-4">
             <div className="flex justify-between">
               <span className="text-sm font-medium">Name:</span>
-              <span className="text-sm">
-                {user?.hasGoogleAuth ? googleNameDisplay : user?.name}
-              </span>
+              <span className="text-sm">{googleNameDisplay}</span>
             </div>
+
             <div className="flex justify-between">
               <span className="text-sm font-medium">Email:</span>
-              <span className="text-sm">
-                {user?.hasGoogleAuth ? googleEmailDisplay : user?.email}
-              </span>
+              <span className="text-sm">{googleEmailDisplay}</span>
             </div>
+
             <div className="flex justify-between">
               <span className="text-sm font-medium">Role:</span>
               <span className="text-sm capitalize">
                 {user?.role?.toLowerCase()}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium">Google Account:</span>
-              <span className="text-sm">
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">Google Account:</span>
                 {user?.hasGoogleAuth ? (
                   <Badge
                     variant="default"
@@ -261,8 +141,62 @@ export default function SettingsPage() {
                 ) : (
                   <Badge variant="destructive">Not Connected</Badge>
                 )}
-              </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Test button: available only when google is connected */}
+                {user?.hasGoogleAuth && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={checkEmailConfig}
+                    disabled={isCheckingConfig}
+                    className="h-8"
+                  >
+                    <RefreshCw
+                      className={`h-3 w-3 mr-1 ${
+                        isCheckingConfig ? "animate-spin" : ""
+                      }`}
+                    />
+                    {isCheckingConfig ? "Testing..." : "Test"}
+                  </Button>
+                )}
+
+                {/* Connect / Reconnect */}
+                <Button
+                  onClick={() => setConnectDialogOpen(true)}
+                  variant={user?.hasGoogleAuth ? "outline" : "default"}
+                  size="sm"
+                >
+                  {user?.hasGoogleAuth ? "Reconnect" : "Connect"}
+                </Button>
+
+                {/* Disconnect (only when connected) */}
+                {user?.hasGoogleAuth && (
+                  <Button
+                    onClick={() => disconnectMutation.mutate()}
+                    variant="destructive"
+                    size="sm"
+                    disabled={disconnectMutation.isPending}
+                  >
+                    {disconnectMutation.isPending
+                      ? "Disconnecting..."
+                      : "Disconnect"}
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {/* Optional: show email config message if present */}
+            {emailConfig?.message && (
+              <p
+                className={`text-sm ${
+                  emailConfig.isValid ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {emailConfig.message}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
