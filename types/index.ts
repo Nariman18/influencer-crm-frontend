@@ -17,6 +17,7 @@ export interface User {
   googleAccessToken?: string;
   googleRefreshToken?: string;
   googleEmail?: string;
+  googleName?: string;
 }
 
 export interface AuthResponse {

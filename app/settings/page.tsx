@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // <-- added useCallback
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
@@ -45,7 +45,8 @@ export default function SettingsPage() {
     },
   });
 
-  const checkEmailConfig = async () => {
+  // memoize checkEmailConfig so it can safely be used inside useEffect and elsewhere
+  const checkEmailConfig = useCallback(async () => {
     if (!user?.hasGoogleAuth) {
       setEmailConfig(null);
       return;
@@ -68,9 +69,9 @@ export default function SettingsPage() {
     } finally {
       setIsCheckingConfig(false);
     }
-  };
+  }, [user?.hasGoogleAuth]);
 
-  // Fix: Use useEffect properly without direct setState calls
+  // Initialize email config whenever google auth changes
   useEffect(() => {
     const initializeEmailConfig = async () => {
       if (user?.hasGoogleAuth) {
@@ -81,7 +82,7 @@ export default function SettingsPage() {
     };
 
     initializeEmailConfig();
-  }, [user?.hasGoogleAuth]); // Only depend on hasGoogleAuth
+  }, [checkEmailConfig, user?.hasGoogleAuth]);
 
   const handleGoogleConnected = () => {
     queryClient.invalidateQueries({ queryKey: ["user-profile"] });
@@ -90,6 +91,14 @@ export default function SettingsPage() {
       checkEmailConfig();
     }, 1000);
   };
+
+  const googleEmailDisplay = user?.hasGoogleAuth
+    ? user?.googleEmail ?? emailConfig?.gmailAddress ?? user?.email
+    : user?.email;
+
+  const googleNameDisplay = user?.hasGoogleAuth
+    ? user?.googleName ?? emailConfig?.userName ?? user?.name
+    : user?.name;
 
   return (
     <DashboardLayout>
@@ -122,7 +131,10 @@ export default function SettingsPage() {
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   <AlertDescription className="text-green-800">
                     <div className="font-semibold">Connected to Google</div>
-                    <div>Gmail address: {user.googleEmail || "Connected"}</div>
+                    <div>
+                      Gmail address: {googleEmailDisplay ?? "Connected"}
+                    </div>
+                    <div>Name: {googleNameDisplay ?? "—"}</div>
                   </AlertDescription>
                 </Alert>
 
@@ -220,11 +232,15 @@ export default function SettingsPage() {
           <CardContent className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm font-medium">Name:</span>
-              <span className="text-sm">{user?.name}</span>
+              <span className="text-sm">
+                {user?.hasGoogleAuth ? googleNameDisplay : user?.name}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm font-medium">Email:</span>
-              <span className="text-sm">{user?.email}</span>
+              <span className="text-sm">
+                {user?.hasGoogleAuth ? googleEmailDisplay : user?.email}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm font-medium">Role:</span>
