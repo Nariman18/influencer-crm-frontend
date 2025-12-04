@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <aside className="w-64 bg-card border-r border-border flex flex-col">
         <div className="p-6 border-b border-border">
           <Link href="/dashboard" className="text-2xl font-bold text-primary">
-            Influencer CRM
+            IMX Agency
           </Link>
         </div>
 
