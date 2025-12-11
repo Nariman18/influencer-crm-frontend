@@ -1,4 +1,4 @@
-// AuthContent.tsx (replace your existing file with this)
+// frontend/AuthContent.tsx
 "use client";
 
 import { useEffect, useState } from "react";

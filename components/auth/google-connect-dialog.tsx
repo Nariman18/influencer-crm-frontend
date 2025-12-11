@@ -124,19 +124,23 @@ export function GoogleConnectDialog({
     sessionStorage.setItem("googleOAuthInProgress", "true");
 
     // Add login_hint to pre-select user's email in account chooser (reduces cross-account confusion)
-    const loginHint = encodeURIComponent(user.email || user.googleEmail || "");
+    const loginHint = user.email || user.googleEmail || "";
 
-    const authUrl =
-      `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${encodeURIComponent(clientId)}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&response_type=code` +
-      `&scope=${encodeURIComponent(scope)}` +
-      `&access_type=offline` +
-      `&prompt=select_account` +
-      `&prompt=consent` +
-      `&state=${encodeURIComponent(stateEncoded)}` +
-      (loginHint ? `&login_hint=${loginHint}` : "");
+    // Build query with URLSearchParams to avoid duplicated keys
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope,
+      access_type: "offline",
+      // Single prompt param with multiple behaviors space-separated
+      prompt: "consent select_account",
+      state: stateEncoded,
+    });
+
+    if (loginHint) params.set("login_hint", loginHint);
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
     console.log("🔗 Redirecting to Google OAuth with state...", stateObj);
     window.location.href = authUrl;
