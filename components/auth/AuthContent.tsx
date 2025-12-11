@@ -142,6 +142,15 @@ export default function AuthCallbackContent() {
           console.log(
             "Connecting Google account to user profile (including state)..."
           );
+
+          console.log("[DEBUG] connecting google with payload:", {
+            access: tokens.accessToken ? "<accessToken...>" : null,
+            refresh: tokens.refreshToken ? "<refreshToken...>" : null,
+            email: tokens.email,
+            state: stateFromUrl,
+            pendingState: pendingState,
+          });
+
           await connectMutation.mutateAsync({
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,

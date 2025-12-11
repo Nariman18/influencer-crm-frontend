@@ -133,6 +133,7 @@ export function GoogleConnectDialog({
       `&response_type=code` +
       `&scope=${encodeURIComponent(scope)}` +
       `&access_type=offline` +
+      `&prompt=select_account` +
       `&prompt=consent` +
       `&state=${encodeURIComponent(stateEncoded)}` +
       (loginHint ? `&login_hint=${loginHint}` : "");
