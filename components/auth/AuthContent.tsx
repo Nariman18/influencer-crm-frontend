@@ -1,3 +1,4 @@
+// AuthContent.tsx (replace your existing file with this)
 "use client";
 
 import { useEffect, useState } from "react";
@@ -21,6 +22,7 @@ export default function AuthCallbackContent() {
       accessToken: string;
       refreshToken: string;
       email: string;
+      state?: string;
     }) => authApi.connectGoogle(data),
     onSuccess: (data) => {
       toast.success("Google account connected successfully");
@@ -29,6 +31,7 @@ export default function AuthCallbackContent() {
       // Clear any stored OAuth state
       sessionStorage.removeItem("googleOAuthInProgress");
       sessionStorage.removeItem("pendingGoogleAuth");
+      sessionStorage.removeItem("pendingGoogleState");
 
       router.push("/settings");
     },
@@ -106,7 +109,27 @@ export default function AuthCallbackContent() {
             return;
           }
 
-          //  Exchange code for tokens
+          // VERIFY state: must match the state we stored when initiating OAuth
+          const stateFromUrl = new URLSearchParams(window.location.search).get(
+            "state"
+          );
+          const pendingState = sessionStorage.getItem("pendingGoogleState");
+
+          if (!stateFromUrl || !pendingState || stateFromUrl !== pendingState) {
+            console.warn("OAuth state mismatch or missing", {
+              stateFromUrl,
+              pendingState,
+            });
+            toast.error("OAuth state mismatch. Please try connecting again.");
+            // Clean up and redirect
+            sessionStorage.removeItem("googleOAuthInProgress");
+            sessionStorage.removeItem("pendingGoogleAuth");
+            sessionStorage.removeItem("pendingGoogleState");
+            router.push("/settings");
+            return;
+          }
+
+          // Exchange code for tokens (server side)
           console.log("Exchanging code for tokens...");
           const tokens = await GoogleAuthService.exchangeCodeForTokens(code);
           console.log("Tokens received:", {
@@ -115,13 +138,18 @@ export default function AuthCallbackContent() {
             hasRefreshToken: !!tokens.refreshToken,
           });
 
-          // Send tokens to backend for storage
-          console.log("Connecting Google account to user profile...");
+          // Send tokens + state to backend for storage (connect endpoint)
+          console.log(
+            "Connecting Google account to user profile (including state)..."
+          );
           await connectMutation.mutateAsync({
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
             email: tokens.email,
+            state: stateFromUrl,
           });
+
+          // success flow handled in onSuccess
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
@@ -132,6 +160,7 @@ export default function AuthCallbackContent() {
           // Clear OAuth state on error
           sessionStorage.removeItem("googleOAuthInProgress");
           sessionStorage.removeItem("pendingGoogleAuth");
+          sessionStorage.removeItem("pendingGoogleState");
 
           router.push("/settings");
         } finally {

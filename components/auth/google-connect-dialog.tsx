@@ -1,4 +1,4 @@
-// google-connect-dialog.tsx
+// frontend/google-connect-dialog.tsx
 "use client";
 
 import { useState } from "react";
@@ -21,6 +21,21 @@ interface GoogleConnectDialogProps {
   onConnected: () => void;
 }
 
+function base64EncodeUnicode(str: string) {
+  // Use TextEncoder to get UTF-8 bytes, then btoa over the binary string.
+  // This avoids the deprecated `unescape(encodeURIComponent(...))` pattern.
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str); // Uint8Array of UTF-8 bytes
+
+  // Convert bytes -> binary string (each byte -> a char with the same code point)
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+
+  return btoa(binary);
+}
+
 export function GoogleConnectDialog({
   open,
   onOpenChange,
@@ -35,6 +50,7 @@ export function GoogleConnectDialog({
       accessToken: string;
       refreshToken: string;
       email: string;
+      state?: string;
     }) => authApi.connectGoogle(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
@@ -54,11 +70,22 @@ export function GoogleConnectDialog({
     // Clear any previous OAuth state
     sessionStorage.removeItem("googleOAuthInProgress");
     sessionStorage.removeItem("pendingGoogleAuth");
+    sessionStorage.removeItem("pendingGoogleState");
 
     // Check if user is logged in
     const token = localStorage.getItem("token");
-    if (!token) {
+    const userStr = localStorage.getItem("user");
+    if (!token || !userStr) {
       toast.error("Please log in first to connect your Google account");
+      router.push("/auth/login");
+      return;
+    }
+
+    let user;
+    try {
+      user = JSON.parse(userStr);
+    } catch (e) {
+      toast.error("Failed to read user session. Please re-login.");
       router.push("/auth/login");
       return;
     }
@@ -72,7 +99,7 @@ export function GoogleConnectDialog({
 
     const redirectUri = `${window.location.origin}/auth/callback`;
 
-    // ✅ UPDATED SCOPES - Added gmail.send for Sent folder copy
+    // Gmail scopes
     const scope = [
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/gmail.send",
@@ -80,19 +107,37 @@ export function GoogleConnectDialog({
       "https://www.googleapis.com/auth/userinfo.profile",
     ].join(" ");
 
+    // Build a minimal state that ties the flow to the current user
+    const stateObj = {
+      uid: user.id || user._id || user?.id,
+      // nonce for better entropy
+      nonce:
+        typeof crypto !== "undefined" && (crypto as Crypto).randomUUID
+          ? (crypto as Crypto).randomUUID()
+          : String(Date.now()),
+    };
+
+    const stateEncoded = base64EncodeUnicode(JSON.stringify(stateObj));
+
+    // Save pending state locally so callback can verify it matches what was sent
+    sessionStorage.setItem("pendingGoogleState", stateEncoded);
+    sessionStorage.setItem("googleOAuthInProgress", "true");
+
+    // Add login_hint to pre-select user's email in account chooser (reduces cross-account confusion)
+    const loginHint = encodeURIComponent(user.email || user.googleEmail || "");
+
     const authUrl =
       `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${clientId}` +
+      `client_id=${encodeURIComponent(clientId)}` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&response_type=code` +
       `&scope=${encodeURIComponent(scope)}` +
       `&access_type=offline` +
-      `&prompt=consent`;
+      `&prompt=consent` +
+      `&state=${encodeURIComponent(stateEncoded)}` +
+      (loginHint ? `&login_hint=${loginHint}` : "");
 
-    // Store that we're in the middle of Google OAuth
-    sessionStorage.setItem("googleOAuthInProgress", "true");
-
-    console.log("🔗 Redirecting to Google OAuth...");
+    console.log("🔗 Redirecting to Google OAuth with state...", stateObj);
     window.location.href = authUrl;
   };
 
@@ -113,6 +158,7 @@ export function GoogleConnectDialog({
             variant="outline"
             disabled={isConnecting || connectMutation.isPending}
           >
+            {/* Google icon SVG */}
             <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
