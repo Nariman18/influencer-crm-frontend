@@ -101,7 +101,7 @@ export function GoogleConnectDialog({
 
     // Gmail scopes
     const scope = [
-      "https://www.googleapis.com/auth/gmail.metadata",
+      "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile",
     ].join(" ");
